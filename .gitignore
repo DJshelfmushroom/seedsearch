@@ -1,0 +1,7 @@
+main
+*.o
+*.out
+build/
+.cache/
+.DS_Store
+.vscode/
