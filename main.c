@@ -40,6 +40,27 @@ bool villageCheck(Generator *g, uint64_t seed, Pos spawn){
     return false;
 }
 
+bool portalCheck(Generator *g, uint64_t seed, Pos spawn){
+    int px = spawn.x, pz = spawn.z;
+    int minX = px - 96, maxX = px + 96;
+    int minZ = pz - 96, maxZ = pz + 96;
+    int r0x = minX >> 4 >> 5;
+    int r1x = maxX >> 4 >> 5;
+    int r0z = minZ >> 4 >> 5;
+    int r1z = maxZ >> 4 >> 5;
+    for (int rx = r0x; rx <= r1x; rx++){
+        for (int rz = r0z; rz <= r1z; rz++){
+            Pos pos;
+            if (!getStructurePos(Ruined_Portal, MC_1_16_1, seed, rx, rz, &pos)) continue; // no village in this region
+
+            int dx = pos.x - px, dz = pos.z - pz;
+            if(abs(dx) > 96 || abs(dz) > 96) continue;
+            if (!isViableStructurePos(Ruined_Portal, g, pos.x, pos.z, 0)) continue;
+            return true;
+        }
+    }
+    return false;}
+
 int main(void) {
     Generator g;
     setupGenerator(&g, MC_1_16_1, 0);
@@ -47,7 +68,7 @@ int main(void) {
     for (seed = 0; ; seed++) {
         applySeed(&g, DIM_OVERWORLD, seed);
         Pos spawn = getSpawn(&g);
-        if(villageCheck(&g, seed, spawn))printf("seed: %llu\n",seed);
+        if(portalCheck(&g, seed, spawn))printf("seed: %llu\n",seed);
     }
     return 0;
 }
