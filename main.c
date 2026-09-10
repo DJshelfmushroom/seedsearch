@@ -1,5 +1,4 @@
 #include <stdio.h>
-// #include <time.h>
 #include <stdbool.h>
 #include "cubiomes/generator.h"
 #include "cubiomes/finders.h"
@@ -14,6 +13,13 @@ struct checkParams{
     int r1z;
 };
 
+static StructureConfig configs[FEATURE_NUM];
+static bool configValid[FEATURE_NUM];
+
+void initConfigs(int mc) {
+    for (int i = 0; i < FEATURE_NUM; i++)
+        configValid[i] = getStructureConfig(i, mc, &configs[i]);
+}
 /**
  * Checks whether a viable village generates within 96 blocks of the given
  * point in the configured region range.
@@ -52,6 +58,12 @@ bool portalCheck(struct checkParams params){
     return false;
 }
 
+void calcRegionBounds(int regionSize, int minX, int maxX, int minZ, int maxZ, int *r0x, int *r1x, int *r0z, int *r1z) {
+    *r0x = floordiv(minX,regionSize);
+    *r1x = floordiv(maxX,regionSize);
+    *r0z = floordiv(minZ,regionSize);
+    *r1z = floordiv(maxZ,regionSize);
+}
 int main(void) {
     Generator g;
     setupGenerator(&g, MC_1_16_1, 0);
@@ -63,12 +75,11 @@ int main(void) {
         int px = spawn.x, pz = spawn.z;
         int minX = px - 96, maxX = px + 96;
         int minZ = pz - 96, maxZ = pz + 96;
-        int r0x = minX >> 4 >> 5;
-        int r1x = maxX >> 4 >> 5;
-        int r0z = minZ >> 4 >> 5;
-        int r1z = maxZ >> 4 >> 5;
+        int regionSize = configs[Village].regionSize << 4;
+        int r0x, r1x, r0z, r1z;
+        calcRegionBounds(regionSize, minX, maxX, minZ, maxZ, &r0x, &r1x, &r0z, &r1z);
         struct checkParams params = {g, seed, spawn, r0x, r1x, r0z, r1z};
-        if (portalCheck(params)) printf("seed: %llu\n", seed);
+        if (villageCheck(params)) printf("seed: %llu\n", seed);
     }
     return 0;
 }
