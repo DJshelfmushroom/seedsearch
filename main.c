@@ -4,7 +4,7 @@
 #include "cubiomes/finders.h"
 
 struct checkParams{
-    Generator g;
+    Generator *g;
     uint64_t seed;
     Pos spawn;
     int r0x;
@@ -36,7 +36,7 @@ bool villageCheck(struct checkParams params){
 
             int dx = pos.x - params.spawn.x, dz = pos.z - params.spawn.z;
             if(abs(dx) > 96 || abs(dz) > 96) continue;
-            if (!isViableStructurePos(Village, &params.g, pos.x, pos.z, 0)) continue;
+            if (!isViableStructurePos(Village, params.g, pos.x, pos.z, 0)) continue;
             return true;
         }
     }
@@ -51,12 +51,13 @@ bool portalCheck(struct checkParams params){
 
             int dx = pos.x - params.spawn.x, dz = pos.z - params.spawn.z;
             if(abs(dx) > 96 || abs(dz) > 96) continue;
-            if (!isViableStructurePos(Ruined_Portal, &params.g, pos.x, pos.z, 0)) continue;
+            if (!isViableStructurePos(Ruined_Portal, params.g, pos.x, pos.z, 0)) continue;
             return true;
         }
     }
     return false;
 }
+//TODO: Make a singular structure check
 
 void calcRegionBounds(int regionSize, int minX, int maxX, int minZ, int maxZ, int *r0x, int *r1x, int *r0z, int *r1z) {
     *r0x = floordiv(minX,regionSize);
@@ -64,22 +65,24 @@ void calcRegionBounds(int regionSize, int minX, int maxX, int minZ, int maxZ, in
     *r0z = floordiv(minZ,regionSize);
     *r1z = floordiv(maxZ,regionSize);
 }
+
 int main(void) {
+    initConfigs(MC_1_16_1);
     Generator g;
     setupGenerator(&g, MC_1_16_1, 0);
     uint64_t seed;
     for (seed = 0; ; seed++) {
         applySeed(&g, DIM_OVERWORLD, seed);
         Pos spawn = getSpawn(&g);
-        // Region grid for this seed
+        int r0x, r1x, r0z, r1z;
         int px = spawn.x, pz = spawn.z;
         int minX = px - 96, maxX = px + 96;
         int minZ = pz - 96, maxZ = pz + 96;
+        // Once per structure, get the region size (in blocks)
         int regionSize = configs[Village].regionSize << 4;
-        int r0x, r1x, r0z, r1z;
         calcRegionBounds(regionSize, minX, maxX, minZ, maxZ, &r0x, &r1x, &r0z, &r1z);
-        struct checkParams params = {g, seed, spawn, r0x, r1x, r0z, r1z};
-        if (villageCheck(params)) printf("seed: %llu\n", seed);
+        struct checkParams params = {&g, seed, spawn, r0x, r1x, r0z, r1z};
+        if (villageCheck(params)) printf("seed: %" PRIu64 "\n", seed);
     }
     return 0;
 }
