@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
 #include <string.h>
@@ -6,6 +7,8 @@
 #include "cubiomes/finders.h"
 #include "cubiomes/util.h"
 #include "cubiomes/rng.h"
+
+#define MC_1_16_1 MC
 
 struct checkParams{
     int structureType;
@@ -31,7 +34,7 @@ bool structureCheck(struct checkParams params, Pos *outPos) {
     for (int rx = params.r0x; rx <= params.r1x; rx++){
         for (int rz = params.r0z; rz <= params.r1z; rz++){
             Pos pos;
-            if (!getStructurePos(params.structureType, MC_1_16_1, params.seed, rx, rz, &pos)) continue;
+            if (!getStructurePos(params.structureType, MC, params.seed, rx, rz, &pos)) continue;
 
             int dx = pos.x - params.spawn.x, dz = pos.z - params.spawn.z;
             if(abs(dx) > 96 || abs(dz) > 96) continue;
@@ -51,20 +54,24 @@ void calcRegionBounds(int regionSize, int minX, int maxX, int minZ, int maxZ, in
 }
 
 int main(int argc, char **argv) {
-    initConfigs(MC_1_16_1);
+    if (argc < 3) {
+        fprintf(stderr, "usage: %s <seed|-1> <struct> [struct,struct,...]\n", argv[0]);
+        return 1;
+    }
+    initConfigs(MC);
     Generator g;
-    setupGenerator(&g, MC_1_16_1, 0);
-    uint64_t seed;
-    bool want[FEATURE_NUM] = {0};
-    // parse args, in order: [prog name, starting seed (-1 is current time), comma separated list (string) of structures to search for]
+    setupGenerator(&g, MC, 0);
+    int64_t seed;
+    int want[argc - 2];
+    // parse args, in order: [prog name, starting seed (-1 is random), feature numbers sequentially]
     for (int i = 1; i < argc; i++) {
         if (i == 1) {
             uint64_t rng;
             setSeed(&rng, time(NULL));
-            seed = strtoll(argv[1], NULL, 10)==-1?(uint64_t)nextLong(&rng):strtoll(argv[1], NULL, 10);
-        } else if (i == 2) {
-            //TODO
+            seed = strcmp(argv[1], "-1") == 0 ? (int64_t)nextLong(&rng) : strtoll(argv[1], NULL, 10);
+            continue;
         }
+        want[i-2] = (int)strtol(argv[i], NULL, 10);
     }
     for (;;seed++) {
         applySeed(&g, DIM_OVERWORLD, seed);
@@ -75,14 +82,13 @@ int main(int argc, char **argv) {
         int minZ = pz - 96, maxZ = pz + 96;
         // Once per structure, get the region size (in blocks)
         //TODO: use argv[2] to select things to check
-        int toCheck[] = {Village, Ruined_Portal, Desert_Pyramid, Jungle_Pyramid};
-        for (int i = 0; i < sizeof(toCheck)/sizeof(toCheck[0]); i++) {
-            int regionSize = configs[toCheck[i]].regionSize << 4;
+        for (int i = 0; i < sizeof(want)/sizeof(want[0]); i++) {
+            int regionSize = configs[want[i]].regionSize << 4;
             calcRegionBounds(regionSize, minX, maxX, minZ, maxZ, &r0x, &r1x, &r0z, &r1z);
-            struct checkParams params = {toCheck[i], &g, seed, spawn, r0x, r1x, r0z, r1z};
+            struct checkParams params = {want[i], &g, seed, spawn, r0x, r1x, r0z, r1z};
             Pos structPos;
             if (structureCheck(params, &structPos)) {
-                printf("HIT %" PRIu64 " %s %i,%i\n" , seed, struct2str(toCheck[i]), structPos.x, structPos.z);
+                printf("HIT %" PRIi64 " %s %i,%i\n" , seed, struct2str(want[i]), structPos.x, structPos.z);
                 fflush(stdout);
             }
         }
