@@ -1,4 +1,5 @@
-main
+main*
+test
 *.o
 *.out
 build/
@@ -7,3 +8,4 @@ build/
 .vscode/
 .idea/
 .*/
+*.dSYM/
