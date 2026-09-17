@@ -14,8 +14,8 @@ main-debug: seedsearch.c main.c seedsearch.h cubiomes/libcubiomes.a
 
 test: seedsearch.c test.c seedsearch.h cubiomes/libcubiomes.a
 	cc $(DEBUGFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
-#	./test
-#	$(RM) ./test
+	./test
+	$(RM) ./test
 
 cubiomes/libcubiomes.a:
 	$(MAKE) -C cubiomes release
