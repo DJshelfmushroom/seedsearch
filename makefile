@@ -12,6 +12,11 @@ main: seedsearch.c main.c seedsearch.h cubiomes/libcubiomes.a
 main-debug: seedsearch.c main.c seedsearch.h cubiomes/libcubiomes.a
 	cc $(DEBUGFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
 
+test: seedsearch.c test.c seedsearch.h cubiomes/libcubiomes.a
+	cc $(DEBUGFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
+#	./test
+#	$(RM) ./test
+
 cubiomes/libcubiomes.a:
 	$(MAKE) -C cubiomes release
 
@@ -19,5 +24,5 @@ cubiomes/libcubiomes.a:
 .PHONY: release clean test debug
 
 clean:
-	$(RM) main
+	$(RM) main test
 	$(MAKE) -C cubiomes clean
