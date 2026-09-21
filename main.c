@@ -5,6 +5,7 @@
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
+#include <math.h>
 
 struct checkSeedsParams {
     int64_t start;
@@ -17,7 +18,8 @@ struct checkSeedsParams {
     int *wantN;
 };
 
-int checkSeeds(struct checkSeedsParams params) {
+void *checkSeeds(void *arg) {
+    struct checkSeedsParams params = *(struct checkSeedsParams *)arg;
     int64_t start = params.start;
     int64_t end = params.end;
     for (int64_t seed = start; seed <= end; seed++) {
@@ -30,12 +32,12 @@ int checkSeeds(struct checkSeedsParams params) {
         int minZ = pz - 96, maxZ = pz + 96;
         calcRegionBounds(params.regionSizesO[0], minX, maxX, minZ, maxZ, &r0x, &r1x, &r0z, &r1z);
         Pos structPos;
-        checkParams checkparams = {11, params.go, seed, spawn, r0x, r1x, r0z, r1z};
+        checkParams checkparams = {params.wantO[0], params.go, seed, spawn, r0x, r1x, r0z, r1z};
         bool portal = false;
         if (structureCheck(checkparams, &structPos)) {
             // printf("HIT %" PRIi64 " %s %i,%i\n" , seed, struct2str(11), structPos.x, structPos.z);
             portal = true;
-            if (ferror(stdout)) return 1;
+            if (ferror(stdout)) return NULL;
         }
         Pos portalPos = structPos;
         minX -= 32, maxX += 32, minZ -= 32, maxZ += 32;
@@ -64,7 +66,7 @@ int checkSeeds(struct checkSeedsParams params) {
             // fflush(stdout);
         }
     }
-    return 0;
+    return NULL;
 }
 
 int main(int argc, char **argv) {
@@ -99,19 +101,29 @@ int main(int argc, char **argv) {
         }
         // region size in blocks
         if (sc.dim == DIM_OVERWORLD) {
-            regionSizesO[i] = sc.regionSize << 4;
+            regionSizesO[wanto_count] = sc.regionSize << 4;
             wantO[wanto_count] = structureType;
             wanto_count++;
         } else if (sc.dim == DIM_NETHER) {
-            regionSizesN[i] = sc.regionSize << 4;
+            regionSizesN[wantn_count] = sc.regionSize << 4;
             wantN[wantn_count] = structureType;
             wantn_count++;
         }
     }
 
-    pthread_t thread;
-    pthread_create(&thread, NULL, checkSeeds(0, 100000, &go, &gn, regionSizesO, regionSizesN, wantO, wantN), NULL)
-    checkSeeds(0, 100000, &go, &gn, regionSizesO, regionSizesN, wantO, wantN);
+    Generator genOverworld[NTHREADS];
+    Generator genNether[NTHREADS];
+    pthread_t threads[NTHREADS];
+    struct checkSeedsParams params[NTHREADS];
+    for (int t = 0; t < NTHREADS; t++) {
+        setupGenerator(&genOverworld[t], MC, 0);
+        setupGenerator(&genNether[t], MC, 0);
+        params[t] = (struct checkSeedsParams){t*10000, (t*10000)+10000, &genOverworld[t], &genNether[t], regionSizesO, regionSizesN, wantO, wantN};
+        pthread_create(&threads[t], NULL, checkSeeds, &params[t]);
+    }
+    for (int t = 0; t < NTHREADS; t++)
+        pthread_join(threads[t], NULL);
+    // checkSeeds(check_seeds_params);
         /*
         // overworld structure check
         for (int i = 0; i < sizeof(wantO)/sizeof(wantO[0]); i++) {

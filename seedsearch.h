@@ -4,6 +4,8 @@
 #include "cubiomes/finders.h"
 #include "cubiomes/util.h"
 #define MC MC_1_16_1
+#define NTHREADS 8
+// 12 on mac studio
 
 
 #ifndef SEEDSEARCH_SEEDSEARCH_H
