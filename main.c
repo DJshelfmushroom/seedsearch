@@ -1,4 +1,5 @@
 #include "seedsearch.h"
+#include "parseargs.h"
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,10 +9,7 @@
 
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IOFBF, 0);
-    if (argc < 3) {
-        fprintf(stderr, "usage: %s <seed|-1> <struct> [struct,struct,...]\n", argv[0]);
-        return 1;
-    }
+    parse_args(argc, argv);
     initConfigs(MC);
     Generator go, gn;
     setupGenerator(&go, MC, 0);

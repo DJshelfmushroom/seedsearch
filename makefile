@@ -6,10 +6,10 @@ LDLIBS = -lm
 release: main
 debug: main-debug
 
-main: seedsearch.c main.c seedsearch.h cubiomes/libcubiomes.a
+main: seedsearch.c main.c parseargs.c util.c parseargs.h util.h seedsearch.h cubiomes/libcubiomes.a
 	cc $(CFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
 
-main-debug: seedsearch.c main.c seedsearch.h cubiomes/libcubiomes.a
+main-debug: seedsearch.c main.c parseargs.c util.c parseargs.h util.h seedsearch.h cubiomes/libcubiomes.a
 	cc $(DEBUGFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
 
 test: seedsearch.c test.c seedsearch.h cubiomes/libcubiomes.a
