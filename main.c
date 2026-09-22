@@ -1,4 +1,5 @@
 #include "seedsearch.h"
+#include "cpucount.h"
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -71,6 +72,7 @@ void *checkSeeds(void *arg) {
 
 int main(int argc, char **argv) {
     // setvbuf(stdout, NULL, _IOFBF, 0);
+    int nthreads = cpuCount();
     if (argc < 3) {
         fprintf(stderr, "usage: %s <seed|-1> <struct> [struct,struct,...]\n", argv[0]);
         return 1;
@@ -111,17 +113,17 @@ int main(int argc, char **argv) {
         }
     }
 
-    Generator genOverworld[NTHREADS];
-    Generator genNether[NTHREADS];
-    pthread_t threads[NTHREADS];
-    struct checkSeedsParams params[NTHREADS];
-    for (int t = 0; t < NTHREADS; t++) {
+    Generator genOverworld[nthreads];
+    Generator genNether[nthreads];
+    pthread_t threads[nthreads];
+    struct checkSeedsParams params[nthreads];
+    for (int t = 0; t < nthreads; t++) {
         setupGenerator(&genOverworld[t], MC, 0);
         setupGenerator(&genNether[t], MC, 0);
         params[t] = (struct checkSeedsParams){t*10000, (t*10000)+10000, &genOverworld[t], &genNether[t], regionSizesO, regionSizesN, wantO, wantN};
         pthread_create(&threads[t], NULL, checkSeeds, &params[t]);
     }
-    for (int t = 0; t < NTHREADS; t++)
+    for (int t = 0; t < nthreads; t++)
         pthread_join(threads[t], NULL);
     // checkSeeds(check_seeds_params);
         /*
