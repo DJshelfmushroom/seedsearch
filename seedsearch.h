@@ -5,7 +5,6 @@
 #include "cubiomes/util.h"
 #define MC MC_1_16_1
 
-
 #ifndef SEEDSEARCH_SEEDSEARCH_H
 #define SEEDSEARCH_SEEDSEARCH_H
 struct checkParams{
@@ -17,7 +16,7 @@ struct checkParams{
     int r1x;
     int r0z;
     int r1z;
-};
+} typedef checkParams;
 
 bool structureCheck(struct checkParams params, Pos *outPos);
 void calcRegionBounds(int regionSize, int minX, int maxX, int minZ, int maxZ, int *r0x, int *r1x, int *r0z, int *r1z);

@@ -6,10 +6,10 @@ LDLIBS = -lm
 release: main
 debug: main-debug
 
-main: seedsearch.c main.c seedsearch.h cubiomes/libcubiomes.a
+main: seedsearch.c cpucount.c main.c parseargs.c util.c seedsearch.h cpucount.h parseargs.h util.h cubiomes/libcubiomes.a
 	cc $(CFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
 
-main-debug: seedsearch.c main.c seedsearch.h cubiomes/libcubiomes.a
+main-debug: seedsearch.c cpucount.c main.c parseargs.c util.c seedsearch.h cpucount.h parseargs.h util.h cubiomes/libcubiomes.a
 	cc $(DEBUGFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
 
 test: seedsearch.c test.c seedsearch.h cubiomes/libcubiomes.a
@@ -24,5 +24,5 @@ cubiomes/libcubiomes.a:
 .PHONY: release clean test debug
 
 clean:
-	$(RM) main test
+	$(RM) main main-debug test
 	$(MAKE) -C cubiomes clean
