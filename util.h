@@ -18,5 +18,6 @@ struct checkSeedsParams {
     int *wantN;
 };
 int str2struct(const char *name);
+bool parse_i64(const char *s, int64_t *out);
 void seed_search_threaded(int nthreads, int *wantO, int *wantN, int *regionSizesO, int *regionSizesN);
 #endif //SEEDSEARCH_UTIL_H

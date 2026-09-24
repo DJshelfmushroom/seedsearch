@@ -12,21 +12,23 @@
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IOFBF, 0);
     int nthreads = cpuCount();
-    parse_args(argc, argv);
+    char* patterns[argc];
+    int64_t seed = parse_args(argc, argv, patterns);
     initConfigs(MC);
+    Group groups[argc];
+    int ngroups = 0;
+    for (int i = 0; patterns[i]; i++, ngroups++) {
+        parse_group(patterns[i], &groups[i]);
+    }
     Generator go, gn;
     setupGenerator(&go, MC, 0);
     setupGenerator(&gn, MC, 0);
-    int64_t seed;
+    /* (depracated arg parsing)
     int nwant = argc - 2;
     int wantO[nwant];
     int wantN[nwant];
     int regionSizesO[nwant];
     int regionSizesN[nwant];
-    // parse args, in order: [prog name, starting seed (-1 is random), feature numbers sequentially]
-    uint64_t rng;
-    setSeed(&rng, time(NULL));
-    seed = strcmp(argv[1], "-1") == 0 ? (int64_t)nextLong(&rng) : strtoll(argv[1], NULL, 10);
     int wanto_count = 0;
     int wantn_count = 0;
     for (int i = 0; i < nwant; i++) {
@@ -48,7 +50,8 @@ int main(int argc, char **argv) {
             wantn_count++;
         }
     }
+    */
 
-    seed_search_threaded(nthreads, wantO, wantN, regionSizesO, regionSizesN);
+    // seed_search_threaded(nthreads, wantO, wantN, regionSizesO, regionSizesN);
     return 0;
 }

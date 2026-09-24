@@ -1,28 +1,33 @@
-CFLAGS = -O3 -march=native -flto -Icubiomes
-DEBUGFLAGS = -g -O0 -march=native -Icubiomes
+WARNINGS = -Wall -Wextra
+CFLAGS = -O3 -march=native -flto -pthread -Icubiomes $(WARNINGS)
+DEBUGFLAGS = -g -O0 -march=native -pthread -Icubiomes $(WARNINGS)
 LDLIBS = -lm
+
+# everything except the two files that define main()
+LIB_SRCS = seedsearch.c util.c parseargs.c cpucount.c
+HEADERS = $(wildcard *.h)
+CUBIOMES = cubiomes/libcubiomes.a
 
 .DEFAULT_GOAL := release
 release: main
 debug: main-debug
 
-main: seedsearch.c cpucount.c main.c parseargs.c util.c seedsearch.h cpucount.h parseargs.h util.h cubiomes/libcubiomes.a
+main: main.c $(LIB_SRCS) $(HEADERS) $(CUBIOMES)
 	cc $(CFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
 
-main-debug: seedsearch.c cpucount.c main.c parseargs.c util.c seedsearch.h cpucount.h parseargs.h util.h cubiomes/libcubiomes.a
+main-debug: main.c $(LIB_SRCS) $(HEADERS) $(CUBIOMES)
 	cc $(DEBUGFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
 
-test: seedsearch.c test.c seedsearch.h cubiomes/libcubiomes.a
+test: test.c $(LIB_SRCS) $(HEADERS) $(CUBIOMES)
 	cc $(DEBUGFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
 	./test
-	$(RM) ./test
+	$(RM) -r ./test ./test.dSYM
 
-cubiomes/libcubiomes.a:
+$(CUBIOMES):
 	$(MAKE) -C cubiomes release
-
 
 .PHONY: release clean test debug
 
 clean:
-	$(RM) main main-debug test
+	$(RM) -r main main-debug test *.dSYM
 	$(MAKE) -C cubiomes clean

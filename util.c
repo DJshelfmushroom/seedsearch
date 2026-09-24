@@ -1,4 +1,6 @@
 #include "util.h"
+#include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 
 int str2struct(const char *name) {
@@ -7,6 +9,18 @@ int str2struct(const char *name) {
         if (s && strcmp(s, name) == 0) return i;
     }
     return -1;
+}
+
+// fuck ass parser with error handling
+bool parse_i64(const char *s, int64_t *out) {
+    char *end;
+    errno = 0;
+    long long v = strtoll(s, &end, 10);
+    if (end == s) return false;          // no digits at all: "abc"
+    if (*end != '\0') return false;      // junk after the number: "128x"
+    if (errno == ERANGE) return false;   // too big to fit in 64 bits
+    *out = v;
+    return true;
 }
 
 void seed_search_threaded(int nthreads, int *wantO, int *wantN, int *regionSizesO, int *regionSizesN) {
