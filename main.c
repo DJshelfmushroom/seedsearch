@@ -18,19 +18,20 @@ int main(int argc, char **argv) {
     Group groups[argc];
     int ngroups = 0;
     for (int i = 0; patterns[i]; i++, ngroups++) {
+        if (strcmp(patterns[i], "stronghold") == 0) continue; //FIXME "stronghold" isn't sufficient, it might have a colon or whatnot
         parse_group(patterns[i], &groups[i]);
     }
     Generator go, gn;
     setupGenerator(&go, MC, 0);
     setupGenerator(&gn, MC, 0);
+
+    for (int i = 0; i < ngroups; i++) {
+
+    }
     /* (depracated arg parsing)
     int nwant = argc - 2;
-    int wantO[nwant];
-    int wantN[nwant];
     int regionSizesO[nwant];
     int regionSizesN[nwant];
-    int wanto_count = 0;
-    int wantn_count = 0;
     for (int i = 0; i < nwant; i++) {
         // wanto[i] = (int)strtol(argv[i + 2], NULL, 10);
         StructureConfig sc;
@@ -52,6 +53,6 @@ int main(int argc, char **argv) {
     }
     */
 
-    // seed_search_threaded(nthreads, wantO, wantN, regionSizesO, regionSizesN);
+    // seed_search_threaded(nthreads, wantO, wantN, regionSizesO, regionSizesN, filter);
     return 0;
 }

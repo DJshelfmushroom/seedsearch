@@ -12,7 +12,7 @@
 
 #define MC MC_1_16_1
 
-static StructureConfig configs[FEATURE_NUM];
+StructureConfig configs[FEATURE_NUM];
 static bool configValid[FEATURE_NUM];
 
 void initConfigs(int mc) {
@@ -22,17 +22,52 @@ void initConfigs(int mc) {
 }
 
 void *checkSeeds(void *arg) {
-    struct checkSeedsParams params = *(struct checkSeedsParams *)arg;
-    int64_t start = params.start;
-    int64_t end = params.end;
-    for (int64_t seed = start; seed <= end; seed++) {
-        applySeed(params.go, DIM_OVERWORLD, seed);
+    // don't touch it it works
+    CheckSeedsParams params = *(CheckSeedsParams *)arg;
+    for (int64_t seed = params.start; seed <= params.end; seed++) {
+        bool success = true;
+        Pos locs[params.filter.groups[0].count];
+        Group sGroup;
+        for (int i = 0; i < params.filter.count; i++) {
+            success = true; // if this group fails, loop repeats
+            Group group = params.filter.groups[i];
+            for (int j = 0; j < params.filter.groups[i].count; j++) {
+                Term term = group.terms[j];
+                int checkDist = term.dist + 524; // don't ask why 524
+                CheckParams check_params = {term.type, NULL, seed, {0,0}, checkDist};
+                Pos structPos;
+                if (!structurePosCheck(check_params, &structPos)) { success = false; break; } // a required structure is not in this seed
+                locs[j] = structPos;
+            }
+            if (success) { sGroup = group; break; } //GOOD GROUP
+        }
+        if (!success) {
+            goto end;
+            /* hit logic if i need it, deletable
+            printf("HIT %lld ", seed);
+            for (int i = 0; i < sGroup.count; i++) {
+                printf("%s %i,%i ", struct2str(sGroup.terms[i].type), locs[i].x, locs[i].z);
+            }
+            printf("\n");
+            */
+        }
+        // applySeed(params.go, DIM_OVERWORLD, seed);
         applySeed(params.gn, DIM_NETHER, seed);
+        for (int i = 0; i < sGroup.count; i++) {
+            
+        }
+        /*
         Pos spawn = getSpawn(params.go);
         int r0x, r1x, r0z, r1z;
         int px = spawn.x, pz = spawn.z;
         int minX = px - 96, maxX = px + 96;
         int minZ = pz - 96, maxZ = pz + 96;
+        for (int i = 0; i < sizeof(params.groups)/sizeof(params.groups[0]); i++) {
+            for (int j = 0; j < params.groups[i].count; j++) {
+                //TODO filter by position
+            }
+        }
+        /*
         calcRegionBounds(params.regionSizesO[0], minX, maxX, minZ, maxZ, &r0x, &r1x, &r0z, &r1z);
         Pos structPos;
         checkParams checkparams = {params.wantO[0], params.go, seed, spawn, r0x, r1x, r0z, r1z};
@@ -65,10 +100,12 @@ void *checkSeeds(void *arg) {
         if (structureCheck(checkparams, &structPos) && portal && bastion) {
             printf("HIT %" PRIi64 " %s %i,%i\t%s %i,%i\t %s %i,%i\n" , seed, struct2str(params.wantO[0]), portalPos.x, portalPos.z, struct2str(params.wantN[0]), bastionPos.x, bastionPos.z, struct2str(params.wantN[1]), structPos.x, structPos.z);
         }
+        */
         if (seed % 1000 == 0) {
-            // fflush(stdout);
+            fflush(stdout);
         }
     }
+    end:
     return NULL;
 }
 
@@ -79,15 +116,18 @@ bool getConfig(int structureType, StructureConfig *out) {
     return true;
 }
 
-bool structureCheck(struct checkParams params, Pos *outPos) {
-    for (int rx = params.r0x; rx <= params.r1x; rx++){
-        for (int rz = params.r0z; rz <= params.r1z; rz++){
+static bool findStructure(CheckParams params, bool viable, Pos *outPos) {
+    int regionSize = configs[params.structureType].regionSize << 4;
+    int r0x = floordiv(params.center.x - params.dist, regionSize), r1x = floordiv(params.center.x + params.dist, regionSize);
+    int r0z = floordiv(params.center.z - params.dist, regionSize), r1z = floordiv(params.center.z + params.dist, regionSize);
+    for (int rx = r0x; rx <= r1x; rx++){
+        for (int rz = r0z; rz <= r1z; rz++){
             Pos pos;
             if (!getStructurePos(params.structureType, MC, params.seed, rx, rz, &pos)) continue;
 
-            int dx = pos.x - params.spawn.x, dz = pos.z - params.spawn.z;
-            if(abs(dx) > 96 || abs(dz) > 96) continue;
-            if (!isViableStructurePos(params.structureType, params.g, pos.x, pos.z, 0)) continue;
+            int dx = pos.x - params.center.x, dz = pos.z - params.center.z;
+            if(abs(dx) > params.dist || abs(dz) > params.dist) continue;
+            if (viable && !isViableStructurePos(params.structureType, params.g, pos.x, pos.z, 0)) continue;
             *outPos = pos;
             return true;
         }
@@ -95,10 +135,12 @@ bool structureCheck(struct checkParams params, Pos *outPos) {
     return false;
 }
 
+// position only: depends on the seed alone, does not need a generator
+bool structurePosCheck(CheckParams params, Pos *outPos) {
+    return findStructure(params, false, outPos);
+}
 
-void calcRegionBounds(int regionSize, int minX, int maxX, int minZ, int maxZ, int *r0x, int *r1x, int *r0z, int *r1z) {
-    *r0x = floordiv(minX,regionSize);
-    *r1x = floordiv(maxX,regionSize);
-    *r0z = floordiv(minZ,regionSize);
-    *r1z = floordiv(maxZ,regionSize);
+// position plus biome viability: params.g must have the seed applied in the structure's dimension
+bool structureCheck(CheckParams params, Pos *outPos) {
+    return findStructure(params, true, outPos);
 }

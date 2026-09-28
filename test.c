@@ -13,42 +13,20 @@
 #define BLUE    "\x1b[34m"
 #define RESET   "\x1b[0m"
 
-static void test_regionBounds(void) {
-    //check proper bounds for village
-    Generator g;
-    setupGenerator(&g, MC, 0);
-    int r0x, r1x, r0z, r1z;
-    uint64_t seed = 0;
-    applySeed(&g, DIM_OVERWORLD, seed);
-    calcRegionBounds(512, -80, 112, -64, 128, &r0x, &r1x, &r0z, &r1z);
-    assert(r0x == -1);
-    assert(r1x == 0);
-    assert(r0z == -1);
-    assert(r1z == 0);
-    // most cases are like this ^, seed 25 is not.
-    seed = 25;
-    applySeed(&g, DIM_OVERWORLD, seed);
-    calcRegionBounds(512, 80, 272, -112, 80, &r0x, &r1x, &r0z, &r1z);
-    assert(r0x == 0);
-    assert(r1x == 0);
-    assert(r0z == -1);
-    assert(r1z == 0);
-}
-
 static void test_structureCheck(void) {
     Generator g;
     setupGenerator(&g, MC, 0);
     uint64_t seed = 1;
     applySeed(&g, DIM_OVERWORLD, seed);
     Pos spawn = getSpawn(&g);
-    struct checkParams params = {Village, &g, seed, spawn, -1, 0, -1, 0};
+    struct checkParams params = {Village, &g, seed, spawn, 96};
     Pos structPos;
     assert(structureCheck(params, &structPos) == false);
     seed = 21;
     applySeed(&g, DIM_OVERWORLD, seed);
     spawn = getSpawn(&g);
     params.seed = seed;
-    params.spawn = spawn;
+    params.center = spawn;
     assert(structureCheck(params, &structPos) == true);
     assert(structPos.x == -160);
     assert(structPos.z == 80);
@@ -56,7 +34,7 @@ static void test_structureCheck(void) {
     applySeed(&g, DIM_OVERWORLD, seed);
     spawn = getSpawn(&g);
     params.seed = seed;
-    params.spawn = spawn;
+    params.center = spawn;
     assert(structureCheck(params, &structPos) == true);
     assert(structPos.x == 160);
     assert(structPos.z == 0);
@@ -64,12 +42,25 @@ static void test_structureCheck(void) {
     applySeed(&g, DIM_OVERWORLD, seed);
     spawn = getSpawn(&g);
     params.seed = seed;
-    params.spawn = spawn;
-    params.r0x = 0;
-    params.r1z = -1;
+    params.center = spawn;
     assert(structureCheck(params, &structPos) == true);
     assert(structPos.x == 240);
     assert(structPos.z == -160);
+}
+
+static void test_structurePosCheck(void) {
+    Generator g;
+    setupGenerator(&g, MC, 0);
+    uint64_t seed = 2;
+    applySeed(&g, DIM_OVERWORLD, seed);
+    Pos spawn = getSpawn(&g);
+    struct checkParams params = {Village, &g, seed, spawn, 96};
+    Pos structPos;
+    // a village position is in range, but its biome can't hold a village
+    assert(structurePosCheck(params, &structPos) == true);
+    assert(structPos.x == 0);
+    assert(structPos.z == 64);
+    assert(structureCheck(params, &structPos) == false);
 }
 
 static void test_getConfig(void) {
@@ -116,8 +107,8 @@ static void test_parse_group(void) {
 
 int main(void) {
     test_getConfig();
-    test_regionBounds();
     test_structureCheck();
+    test_structurePosCheck();
     test_parse_group();
     printf(GREEN "all tests pass\n" RESET);
     return 0;
