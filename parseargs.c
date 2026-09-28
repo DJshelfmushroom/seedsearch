@@ -12,8 +12,20 @@ bool parse_group(char *text, Group *g) {
     for (char *term = strtok(text, "+"); term; term = strtok(NULL, "+"), g->count++) {
         if (g->count >= MAX_TERMS) return false; // improper group, too many terms.
         Term* t = &(g->terms[g->count]);
-        char* colon = strchr(term, ':');
         t->dist = 96;
+        t->from = FROM_SPAWN;
+        char* at = strchr(term, '@');
+        if (at != NULL) {
+            *at = '\0'; // structure:123@anchor becomes "structure:123" and "anchor"
+            int anchor = str2struct(at + 1);
+            if (anchor < 0) return false; // anchor isn't a structure
+            // get the closest anchor (not the first)
+            for (int k = g->count - 1; k >= 0 && t->from == FROM_SPAWN; k--) {
+                if (g->terms[k].type == anchor) t->from = k;
+            }
+            if (t->from == FROM_SPAWN) return false; // anchor has to come earlier in the group
+        }
+        char* colon = strchr(term, ':');
         if (colon != NULL){
             // there is a colon, but we can't use strtok again. split the string at the colon by replacing the colon with a null terminator, splitting it into two strings.
             *colon = '\0'; // structure:123 becomes "structure" and "123"
@@ -33,7 +45,9 @@ bool parse_group(char *text, Group *g) {
 static void usage(FILE *out, const char *prog) {
     fprintf(out, "usage: %1$s [-s seed] <filter>\n\n"
                  "A filter is defined by a list of structure names combined with spaces or + signs, with an optional distance to check from spawn.\n"
-                 "For example, ruined_portal+fortress:128\n", prog);
+                 "For example, ruined_portal+fortress:128\n\n"
+                 "Add @name after a structure to measure its distance from an earlier structure in the group instead of from spawn.\n"
+                 "For example, ruined_portal+bastion_remnant:64@ruined_portal+fortress:128@bastion_remnant\n", prog);
 }
 
 int64_t parse_args(int argc, char *argv[], char* patterns[]) {

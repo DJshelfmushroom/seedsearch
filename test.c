@@ -84,13 +84,25 @@ static void test_parse_group(void) {
         { "",                                             false, 0, {}},
         { "fortres",                                      false, 0, {}},
         { "fortress:abc",                                 false, 0, {}},
-        { "fortress",                                     true, 1, {{Fortress, 96}} },
-        { "fortress+bastion_remnant:128",                 true, 2, {{Fortress, 96}, {Bastion, 128}} },
-        {"ruined_portal+fortress:64+bastion_remnant:124", true, 3, {{Ruined_Portal, 96}, {Fortress, 64}, {Bastion, 124}} },
+        { "fortress",                                     true, 1, {{Fortress, 96, FROM_SPAWN}} },
+        { "fortress+bastion_remnant:128",                 true, 2, {{Fortress, 96, FROM_SPAWN}, {Bastion, 128, FROM_SPAWN}} },
+        {"ruined_portal+fortress:64+bastion_remnant:124", true, 3, {{Ruined_Portal, 96, FROM_SPAWN}, {Fortress, 64, FROM_SPAWN}, {Bastion, 124, FROM_SPAWN}} },
+        // anchors: @name measures from an earlier term instead of spawn
+        { "ruined_portal+bastion_remnant:64@ruined_portal+fortress:128@bastion_remnant",
+                                                          true, 3, {{Ruined_Portal, 96, FROM_SPAWN}, {Bastion, 64, 0}, {Fortress, 128, 1}} },
+        { "ruined_portal+bastion_remnant@ruined_portal",  true, 2, {{Ruined_Portal, 96, FROM_SPAWN}, {Bastion, 96, 0}} },
+        // duplicate anchor name picks the closest earlier one
+        { "ruined_portal+ruined_portal+fortress@ruined_portal",
+                                                          true, 3, {{Ruined_Portal, 96, FROM_SPAWN}, {Ruined_Portal, 96, FROM_SPAWN}, {Fortress, 96, 1}} },
+        { "fortress@ruined_portal",                       false, 0, {}}, // anchor isn't earlier
+        { "fortress@fortress",                            false, 0, {}}, // anchored to itself
+        { "ruined_portal+fortress@fortres",               false, 0, {}}, // unknown anchor
+        { "ruined_portal+fortress@",                      false, 0, {}}, // empty anchor
+        { "ruined_portal+fortress@ruined_portal:64",      false, 0, {}}, // distance has to come before the anchor
     };
 
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
-        char str[64];
+        char str[128];
         strcpy(str, cases[i].input);
         Group g;
         bool ok = parse_group(str, &g);
@@ -101,6 +113,7 @@ static void test_parse_group(void) {
         for (int t = 0; t < g.count; t++) {
             assert(g.terms[t].type == cases[i].terms[t].type);
             assert(g.terms[t].dist == cases[i].terms[t].dist);
+            assert(g.terms[t].from == cases[i].terms[t].from);
         }
     }
 }

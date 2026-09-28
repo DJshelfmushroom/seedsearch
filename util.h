@@ -10,8 +10,9 @@
 #define SEEDSEARCH_UTIL_H
 
 #define MAX_TERMS 8
+#define FROM_SPAWN -1
 
-typedef struct { int type; int dist; } Term;                  // one structure
+typedef struct { int type; int dist; int from; } Term;        // one structure. from is the index of an earlier term to measure dist from, or FROM_SPAWN
 typedef struct { Term terms[MAX_TERMS]; int count; } Group;   // all must match
 typedef struct { Group groups[MAX_TERMS]; int count; } Filter;
 
