@@ -23,7 +23,7 @@ bool parse_i64(const char *s, int64_t *out) {
     return true;
 }
 
-void seed_search_threaded(int nthreads, int *wantO, int *wantN, int *regionSizesO, int *regionSizesN, Filter filter) {
+void seed_search_threaded(int nthreads, int64_t startSeed, Filter filter) {
     Generator genOverworld[nthreads];
     Generator genNether[nthreads];
     pthread_t threads[nthreads];
@@ -31,15 +31,9 @@ void seed_search_threaded(int nthreads, int *wantO, int *wantN, int *regionSizes
     for (int t = 0; t < nthreads; t++) {
         setupGenerator(&genOverworld[t], MC, 0);
         setupGenerator(&genNether[t], MC, 0);
-        params[t] = (CheckSeedsParams){t*10000, (t*10000)+10000, &genOverworld[t], &genNether[t], regionSizesO, regionSizesN, wantO, wantN, filter};
+        params[t] = (CheckSeedsParams){startSeed+(t*10000), startSeed+((t+1)*10000) - 1, &genOverworld[t], &genNether[t], filter};
         pthread_create(&threads[t], NULL, checkSeeds, &params[t]);
     }
     for (int t = 0; t < nthreads; t++)
         pthread_join(threads[t], NULL);
-}
-
-int calcRegionSize(int structure) {
-    StructureConfig sc;
-    if (getStructureConfig(structure, MC, &sc)) return sc.regionSize << 4;
-    return -1;
 }

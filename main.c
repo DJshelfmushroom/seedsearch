@@ -2,12 +2,8 @@
 #include "cpucount.h"
 #include "parseargs.h"
 #include "util.h"
-#include <inttypes.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <math.h>
 
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IOFBF, 0);
@@ -15,44 +11,21 @@ int main(int argc, char **argv) {
     char* patterns[argc];
     int64_t seed = parse_args(argc, argv, patterns);
     initConfigs(MC);
-    Group groups[argc];
+    Filter filter;
     int ngroups = 0;
     for (int i = 0; patterns[i]; i++, ngroups++) {
-        if (strcmp(patterns[i], "stronghold") == 0) continue; //FIXME "stronghold" isn't sufficient, it might have a colon or whatnot
-        parse_group(patterns[i], &groups[i]);
-    }
-    Generator go, gn;
-    setupGenerator(&go, MC, 0);
-    setupGenerator(&gn, MC, 0);
-
-    for (int i = 0; i < ngroups; i++) {
-
-    }
-    /* (depracated arg parsing)
-    int nwant = argc - 2;
-    int regionSizesO[nwant];
-    int regionSizesN[nwant];
-    for (int i = 0; i < nwant; i++) {
-        // wanto[i] = (int)strtol(argv[i + 2], NULL, 10);
-        StructureConfig sc;
-        int structureType = (int)strtol(argv[i + 2], NULL, 10);
-        if (!getConfig((int)strtol(argv[i + 2], NULL, 10), &sc)) {
-            fprintf(stderr, "structure %d is not available in this version\n", structureType);
+        if (ngroups >= MAX_TERMS) {
+            fprintf(stderr, "too many filters (max %d)\n", MAX_TERMS);
             return 1;
         }
-        // region size in blocks
-        if (sc.dim == DIM_OVERWORLD) {
-            regionSizesO[wanto_count] = sc.regionSize << 4;
-            wantO[wanto_count] = structureType;
-            wanto_count++;
-        } else if (sc.dim == DIM_NETHER) {
-            regionSizesN[wantn_count] = sc.regionSize << 4;
-            wantN[wantn_count] = structureType;
-            wantn_count++;
+        char original[strlen(patterns[i]) + 1];
+        strcpy(original, patterns[i]); // parse_group writes over its input, save this in case error
+        if (!parse_group(patterns[i], &filter.groups[i])) {
+            fprintf(stderr, "invalid filter: %s\n", original);
+            return 1;
         }
     }
-    */
-
-    // seed_search_threaded(nthreads, wantO, wantN, regionSizesO, regionSizesN, filter);
+    filter.count = ngroups;
+    seed_search_threaded(nthreads, seed, filter);
     return 0;
 }

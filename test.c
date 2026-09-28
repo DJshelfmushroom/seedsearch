@@ -19,7 +19,7 @@ static void test_structureCheck(void) {
     uint64_t seed = 1;
     applySeed(&g, DIM_OVERWORLD, seed);
     Pos spawn = getSpawn(&g);
-    struct checkParams params = {Village, &g, seed, spawn, 96};
+    CheckParams params = {Village, &g, seed, spawn, 96};
     Pos structPos;
     assert(structureCheck(params, &structPos) == false);
     seed = 21;
@@ -54,7 +54,7 @@ static void test_structurePosCheck(void) {
     uint64_t seed = 2;
     applySeed(&g, DIM_OVERWORLD, seed);
     Pos spawn = getSpawn(&g);
-    struct checkParams params = {Village, &g, seed, spawn, 96};
+    CheckParams params = {Village, &g, seed, spawn, 96};
     Pos structPos;
     // a village position is in range, but its biome can't hold a village
     assert(structurePosCheck(params, &structPos) == true);

@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <time.h>
-#include <string.h>
+#include <inttypes.h>
 #include "cubiomes/generator.h"
 #include "cubiomes/finders.h"
 #include "cubiomes/util.h"
@@ -10,7 +9,8 @@
 #include "seedsearch.h"
 #include "util.h"
 
-#define MC MC_1_16_1
+// how far spawn can be from 0,0 on either axis
+#define SPAWN_RANGE 524
 
 StructureConfig configs[FEATURE_NUM];
 static bool configValid[FEATURE_NUM];
@@ -21,91 +21,85 @@ void initConfigs(int mc) {
 
 }
 
+// How far each term's structure can be from 0,0 in its own dimension. The prefilter searches
+// this far so it never throws out a seed the full check would accept: an anchored term's range
+// is its anchor's range, converted between dimensions, plus its own dist.
+static void prefilterRanges(const Group *group, int out[]) {
+    for (int j = 0; j < group->count; j++) {
+        Term term = group->terms[j];
+        int dim = (int)configs[term.type].dim;
+        int range = SPAWN_RANGE;
+        int centerDim = DIM_OVERWORLD;
+        if (term.from != FROM_SPAWN) {
+            range = out[term.from];
+            centerDim = (int)configs[group->terms[term.from].type].dim;
+        }
+        if (centerDim == DIM_OVERWORLD && dim == DIM_NETHER) range = range / 8 + 1;
+        if (centerDim == DIM_NETHER && dim == DIM_OVERWORLD) range *= 8;
+        out[j] = range + term.dist;
+    }
+}
+
 void *checkSeeds(void *arg) {
-    // don't touch it it works
     CheckSeedsParams params = *(CheckSeedsParams *)arg;
+    int ranges[MAX_TERMS][MAX_TERMS];
+    for (int i = 0; i < params.filter.count; i++)
+        prefilterRanges(&params.filter.groups[i], ranges[i]);
     for (int64_t seed = params.start; seed <= params.end; seed++) {
-        bool success = true;
-        Pos locs[params.filter.groups[0].count];
-        Group sGroup;
+        Group groups[MAX_TERMS];
+        int successfulCount = 0;
         for (int i = 0; i < params.filter.count; i++) {
-            success = true; // if this group fails, loop repeats
+            bool success = true;
             Group group = params.filter.groups[i];
-            for (int j = 0; j < params.filter.groups[i].count; j++) {
-                Term term = group.terms[j];
-                int checkDist = term.dist + 524; // don't ask why 524
-                CheckParams check_params = {term.type, NULL, seed, {0,0}, checkDist};
+            for (int j = 0; j < group.count; j++) {
+                CheckParams check_params = {group.terms[j].type, NULL, seed, {0,0}, ranges[i][j]};
                 Pos structPos;
                 if (!structurePosCheck(check_params, &structPos)) { success = false; break; } // a required structure is not in this seed
-                locs[j] = structPos;
             }
-            if (success) { sGroup = group; break; } //GOOD GROUP
+            if (success) { groups[successfulCount] = group; successfulCount++; } //GOOD GROUP
         }
-        if (!success) {
-            goto end;
-            /* hit logic if i need it, deletable
-            printf("HIT %lld ", seed);
-            for (int i = 0; i < sGroup.count; i++) {
-                printf("%s %i,%i ", struct2str(sGroup.terms[i].type), locs[i].x, locs[i].z);
-            }
-            printf("\n");
-            */
-        }
-        // applySeed(params.go, DIM_OVERWORLD, seed);
+        if (successfulCount == 0) goto end;
+
+        applySeed(params.go, DIM_OVERWORLD, seed);
         applySeed(params.gn, DIM_NETHER, seed);
-        for (int i = 0; i < sGroup.count; i++) {
-            
-        }
-        /*
         Pos spawn = getSpawn(params.go);
-        int r0x, r1x, r0z, r1z;
-        int px = spawn.x, pz = spawn.z;
-        int minX = px - 96, maxX = px + 96;
-        int minZ = pz - 96, maxZ = pz + 96;
-        for (int i = 0; i < sizeof(params.groups)/sizeof(params.groups[0]); i++) {
-            for (int j = 0; j < params.groups[i].count; j++) {
-                //TODO filter by position
+        Pos found[MAX_TERMS][MAX_TERMS];
+        int successIndex = -1;
+        for (int i = 0; i < successfulCount; i++) {
+            bool ok = true;
+            for (int j = 0; j < groups[i].count; j++) {
+                Term term = groups[i].terms[j];
+                int dim = (int)configs[term.type].dim;
+                // spawn is an overworld position, so treat it like an overworld anchor
+                Pos center = spawn;
+                int centerDim = DIM_OVERWORLD;
+                if (term.from != FROM_SPAWN) { // we're looking from another structure
+                    center = found[i][term.from];
+                    centerDim = (int)configs[groups[i].terms[term.from].type].dim;
+                }
+                // convert the center into the term's dimension
+                if (centerDim == DIM_OVERWORLD && dim == DIM_NETHER) center = (Pos){floordiv(center.x, 8), floordiv(center.z, 8)};
+                if (centerDim == DIM_NETHER && dim == DIM_OVERWORLD) center = (Pos){center.x * 8, center.z * 8};
+                Generator *g = dim == DIM_NETHER ? params.gn : params.go;
+                CheckParams check_params = {term.type, g, seed, center, term.dist};
+                // this assumes 1 succesful group per seed and may lose some, but the chances are astronomically small that two groups would be correct, and it doesn't really matter for this use case.
+                if (!structureCheck(check_params, &found[i][j])) { ok = false; break; }
             }
+            if (ok) { successIndex = i; break; } // group successful, one group per seed.
         }
-        /*
-        calcRegionBounds(params.regionSizesO[0], minX, maxX, minZ, maxZ, &r0x, &r1x, &r0z, &r1z);
-        Pos structPos;
-        checkParams checkparams = {params.wantO[0], params.go, seed, spawn, r0x, r1x, r0z, r1z};
-        bool portal = false;
-        if (structureCheck(checkparams, &structPos)) {
-            // printf("HIT %" PRIi64 " %s %i,%i\n" , seed, struct2str(11), structPos.x, structPos.z);
-            portal = true;
-            if (ferror(stdout)) return NULL;
+        if (successIndex == -1) goto end;
+        flockfile(stdout); // keep other threads from writing into the middle of this line
+        printf("HIT %" PRId64 " ", seed);
+        for (int i = 0; i < groups[successIndex].count; i++) {
+            printf("%s %i,%i ", struct2str(groups[successIndex].terms[i].type), found[successIndex][i].x, found[successIndex][i].z);
         }
-        Pos portalPos = structPos;
-        minX -= 32, maxX += 32, minZ -= 32, maxZ += 32;
-        calcRegionBounds(params.regionSizesN[0], minX, maxX, minZ, maxZ, &r0x, &r1x, &r0z, &r1z);
-        checkparams.structureType = params.wantN[0];
-        checkparams.g = params.gn;
-        checkparams.spawn = structPos;
-        checkparams.spawn.x = floor(portalPos.x / 8.0);
-        checkparams.spawn.z = floor(portalPos.z / 8.0);
-        bool bastion = false;
-        if (structureCheck(checkparams, &structPos)) {
-            bastion = true;
-            // printf("HIT %" PRIi64 " %s %i,%i\t%s %i,%i\n" , seed, struct2str(wantO[0]), portalPos.x, portalPos.z, struct2str(wantN[0]), structPos.x, structPos.z);
-        }
-        Pos bastionPos = structPos;
-        calcRegionBounds(params.regionSizesN[1], minX, maxX, minZ, maxZ, &r0x, &r1x, &r0z, &r1z);
-        checkparams.structureType = params.wantN[1];
-        checkparams.g = params.gn;
-        checkparams.spawn = structPos;
-        checkparams.spawn.x = floor(bastionPos.x);
-        checkparams.spawn.z = floor(bastionPos.z);
-        if (structureCheck(checkparams, &structPos) && portal && bastion) {
-            printf("HIT %" PRIi64 " %s %i,%i\t%s %i,%i\t %s %i,%i\n" , seed, struct2str(params.wantO[0]), portalPos.x, portalPos.z, struct2str(params.wantN[0]), bastionPos.x, bastionPos.z, struct2str(params.wantN[1]), structPos.x, structPos.z);
-        }
-        */
+        printf("\n");
+        funlockfile(stdout);
+        end: ;
         if (seed % 1000 == 0) {
             fflush(stdout);
         }
     }
-    end:
     return NULL;
 }
 

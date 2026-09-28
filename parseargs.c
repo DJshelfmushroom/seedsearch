@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 bool parse_group(char *text, Group *g) {
     g->count = 0;
@@ -43,11 +44,12 @@ bool parse_group(char *text, Group *g) {
 }
 
 static void usage(FILE *out, const char *prog) {
-    fprintf(out, "usage: %1$s [-s seed] <filter>\n\n"
-                 "A filter is defined by a list of structure names combined with spaces or + signs, with an optional distance to check from spawn.\n"
+    fprintf(out, "usage: %1$s [-s seed] <filter>...\n\n"
+                 "A filter is a list of structure names joined with + signs, each with an optional :distance to check from spawn (default 96, max 2048).\n"
                  "For example, ruined_portal+fortress:128\n\n"
                  "Add @name after a structure to measure its distance from an earlier structure in the group instead of from spawn.\n"
-                 "For example, ruined_portal+bastion_remnant:64@ruined_portal+fortress:128@bastion_remnant\n", prog);
+                 "For example, ruined_portal+bastion_remnant:64@ruined_portal+fortress:128@bastion_remnant\n\n"
+                 "Separate filters with spaces to accept seeds that match any of them.\n", prog);
 }
 
 int64_t parse_args(int argc, char *argv[], char* patterns[]) {
@@ -58,24 +60,32 @@ int64_t parse_args(int argc, char *argv[], char* patterns[]) {
     while ((opt = getopt(argc, argv, ":s:h")) != -1) {
         switch (opt) {
             case 's':
-                seed = strtoll(optarg, NULL, 10);
+                if (!parse_i64(optarg, &seed)) {
+                    fprintf(stderr, "invalid seed: %s\n", optarg);
+                    exit(1);
+                }
                 break;
             case 'h':
                 usage(stderr, argv[0]);
                 exit(0);
                 break;
+            case ':':
+                fprintf(stderr, "option -%c needs a value\n", optopt);
+                exit(1);
+            default:
+                fprintf(stderr, "unknown option -%c\n", optopt);
+                usage(stderr, argv[0]);
+                exit(1);
         }
     }
-    if (optind < argc)
-    {
-        // while (optind < argc)
-        int c = 0;
-        for (int i = optind; i < argc; i++, c++) {
-            patterns[c] = argv[i];
-        }
-        patterns[c] = NULL;
-    } else {
-        patterns[0] = NULL;
+    if (optind >= argc) { // nothing to search for
+        usage(stderr, argv[0]);
+        exit(1);
     }
+    int c = 0;
+    for (int i = optind; i < argc; i++, c++) {
+        patterns[c] = argv[i];
+    }
+    patterns[c] = NULL;
     return seed;
 }
