@@ -7,20 +7,20 @@
 
 #ifndef SEEDSEARCH_SEEDSEARCH_H
 #define SEEDSEARCH_SEEDSEARCH_H
-struct checkParams{
+typedef struct {
     int structureType;
     Generator *g;
     uint64_t seed;
-    Pos spawn;
-    int r0x;
-    int r1x;
-    int r0z;
-    int r1z;
-} typedef checkParams;
+    Pos center;
+    int dist;
+} CheckParams;
 
-bool structureCheck(struct checkParams params, Pos *outPos);
-void calcRegionBounds(int regionSize, int minX, int maxX, int minZ, int maxZ, int *r0x, int *r1x, int *r0z, int *r1z);
+extern StructureConfig configs[FEATURE_NUM];
+
+bool structurePosCheck(CheckParams params, Pos *outPos);
+bool structureCheck(CheckParams params, Pos *outPos);
 void initConfigs(int mc);
 bool getConfig(int structureType, StructureConfig *out);
+void *checkSeeds(void *arg);
 
 #endif //SEEDSEARCH_SEEDSEARCH_H
