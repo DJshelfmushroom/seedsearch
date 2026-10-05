@@ -4,6 +4,7 @@
 #include "cubiomes/util.h"
 #include "seedsearch.h"
 #include <pthread.h>
+#include <stdio.h>
 
 
 #ifndef SEEDSEARCH_UTIL_H

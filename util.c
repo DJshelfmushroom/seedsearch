@@ -1,5 +1,6 @@
 #include "util.h"
 #include <errno.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -28,12 +29,17 @@ void seed_search_threaded(int nthreads, int64_t startSeed, Filter filter) {
     Generator genNether[nthreads];
     pthread_t threads[nthreads];
     CheckSeedsParams params[nthreads];
-    for (int t = 0; t < nthreads; t++) {
-        setupGenerator(&genOverworld[t], MC, 0);
-        setupGenerator(&genNether[t], MC, 0);
-        params[t] = (CheckSeedsParams){startSeed+(t*10000), startSeed+((t+1)*10000) - 1, &genOverworld[t], &genNether[t], filter};
-        pthread_create(&threads[t], NULL, checkSeeds, &params[t]);
+    while (true) {
+        for (int t = 0; t < nthreads; t++) {
+            setupGenerator(&genOverworld[t], MC, 0);
+            setupGenerator(&genNether[t], MC, 0);
+            params[t] = (CheckSeedsParams){startSeed+(t*10000), startSeed+((t+1)*10000) - 1, &genOverworld[t], &genNether[t], filter};
+            pthread_create(&threads[t], NULL, checkSeeds, &params[t]);
+        }
+        for (int t = 0; t < nthreads; t++)
+            pthread_join(threads[t], NULL);
+        startSeed += 10000*nthreads;
+        if (ferror(stdout)) { printf("SIGPIPE, exiting."); break; }
     }
-    for (int t = 0; t < nthreads; t++)
-        pthread_join(threads[t], NULL);
+
 }

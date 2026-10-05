@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <inttypes.h>
@@ -48,6 +47,7 @@ void *checkSeeds(void *arg) {
     for (int64_t seed = params.start; seed <= params.end; seed++) {
         Group groups[MAX_TERMS];
         int successfulCount = 0;
+        // prefilter
         for (int i = 0; i < params.filter.count; i++) {
             bool success = true;
             Group group = params.filter.groups[i];
