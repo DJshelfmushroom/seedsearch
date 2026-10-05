@@ -1,6 +1,9 @@
 WARNINGS = -Wall -Wextra
-CFLAGS = -O3 -march=native -flto -pthread -Icubiomes $(WARNINGS)
-DEBUGFLAGS = -g -O0 -march=native -pthread -Icubiomes $(WARNINGS)
+# portable by default; `make native` or e.g. ARCHFLAGS="-arch arm64 -arch x86_64"
+# (run `make clean` first when changing it, so cubiomes is rebuilt too)
+ARCHFLAGS ?=
+CFLAGS = -O3 -flto -fwrapv -pthread -Icubiomes $(ARCHFLAGS) $(WARNINGS)
+DEBUGFLAGS = -g -O0 -fwrapv -pthread -Icubiomes $(ARCHFLAGS) $(WARNINGS)
 LDLIBS = -lm
 
 # everything except the two files that define main()
@@ -12,22 +15,29 @@ CUBIOMES = cubiomes/libcubiomes.a
 release: main
 debug: main-debug
 
+native:
+	$(MAKE) ARCHFLAGS=-march=native
+
 main: main.c $(LIB_SRCS) $(HEADERS) $(CUBIOMES)
-	cc $(CFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
+	$(CC) $(CFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
 
 main-debug: main.c $(LIB_SRCS) $(HEADERS) $(CUBIOMES)
-	cc $(DEBUGFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
+	$(CC) $(DEBUGFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
 
 test: test.c $(LIB_SRCS) $(HEADERS) $(CUBIOMES)
-	cc $(DEBUGFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
+	$(CC) $(DEBUGFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
 	./test
 	$(RM) -r ./test ./test.dSYM
 
-$(CUBIOMES):
-	$(MAKE) -C cubiomes release
+$(CUBIOMES): cubiomes/makefile $(wildcard cubiomes/*.c cubiomes/*.h)
+	$(MAKE) -C cubiomes release CC="$(CC)" CFLAGS="$(ARCHFLAGS)"
 
-.PHONY: release clean test debug
+cubiomes/makefile:
+	@echo "cubiomes submodule missing, run: git submodule update --init" >&2
+	@exit 1
+
+.PHONY: release clean test debug native
 
 clean:
 	$(RM) -r main main-debug test *.dSYM
-	$(MAKE) -C cubiomes clean
+	if [ -f cubiomes/makefile ]; then $(MAKE) -C cubiomes clean; fi

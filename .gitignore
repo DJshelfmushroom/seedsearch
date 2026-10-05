@@ -8,4 +8,5 @@ build/
 .vscode/
 .idea/
 .*/
+!.github/
 *.dSYM/
