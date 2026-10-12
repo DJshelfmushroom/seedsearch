@@ -44,7 +44,7 @@ bool parse_group(char *text, Group *g) {
 }
 
 static void usage(FILE *out, const char *prog) {
-    fprintf(out, "usage: %1$s [-s seed] <filter>...\n\n"
+    fprintf(out, "usage: %1$s [-s seed] <filter> [filter]...\n\n"
                  "A filter is a list of structure names joined with + signs, each with an optional :distance to check from spawn (default 96, max 2048).\n"
                  "For example, ruined_portal+fortress:128\n\n"
                  "Add @name after a structure to measure its distance from an earlier structure in the group instead of from spawn.\n"

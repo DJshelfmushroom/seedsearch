@@ -56,104 +56,112 @@ void *checkSeeds(void *arg) {
     }
 
     PosBox anywhere = { -SPAWN_RANGE, -SPAWN_RANGE, SPAWN_RANGE, SPAWN_RANGE }; // generic PosBox for our max spawn range
+    while (!atomic_load(params.stop)) {
+        pthread_mutex_lock(params.mtx);
+            int64_t batch = *params.start;
+            *params.start += params.offset;
+        pthread_mutex_unlock(params.mtx);
+        // checked every seed so ctrl-c doesn't wait for the batch to finish; relaxed is enough for a flag
+        for (int64_t seed = batch; seed < batch + params.offset && !atomic_load_explicit(params.stop, memory_order_relaxed); seed++) {
+            int successful[MAX_TERMS]; // indicies of successful groups
+            int successfulCount = 0;
+            Pos picked[MAX_TERMS];
 
-    for (int64_t seed = params.start; seed <= params.end; seed++) {
-        int successful[MAX_TERMS]; // indicies of successful groups
-        int successfulCount = 0;
-        Pos picked[MAX_TERMS];
-
-        // 1. check all locations against max spawn range. cheap, no spawn check needed
-        for (int i = 0; i < params.filter.count; i++) { // all groups in filter
-            Group group = params.filter.groups[i];
-            bool ok = true;
-            for (int j = 0; j < group.count; j++) {
-                // all terms in group
-                Term term = group.terms[j];
-                candidates[i].count[j] = 0;
-                int regionSize = configs[term.type].regionSize << 4;
-                int r0x = floordiv(-ranges[i][j], regionSize), r1x = floordiv(ranges[i][j], regionSize);
-                int r0z = r0x, r1z = r1x;
-                for (int rx = r0x; rx <= r1x; rx++){
-                    for (int rz = r0z; rz <= r1z; rz++){
-                        Pos pos;
-                        if (getStructurePos(term.type, MC, seed, rx, rz, &pos)
-                            && abs(pos.x) <= ranges[i][j]
-                            && abs(pos.z) <= ranges[i][j])
-                        {
-                            candidates[i].locs[j][candidates[i].count[j]++] = pos; //structure found; in bounds; set the position and increment the count
+            // 1. check all locations against max spawn range. cheap, no spawn check needed
+            for (int i = 0; i < params.filter.count; i++) { // all groups in filter
+                Group group = params.filter.groups[i];
+                bool ok = true;
+                for (int j = 0; j < group.count; j++) {
+                    // all terms in group
+                    Term term = group.terms[j];
+                    candidates[i].count[j] = 0;
+                    int regionSize = configs[term.type].regionSize << 4;
+                    int r0x = floordiv(-ranges[i][j], regionSize), r1x = floordiv(ranges[i][j], regionSize);
+                    int r0z = r0x, r1z = r1x;
+                    for (int rx = r0x; rx <= r1x; rx++){
+                        for (int rz = r0z; rz <= r1z; rz++){
+                            Pos pos;
+                            if (getStructurePos(term.type, MC, seed, rx, rz, &pos)
+                                && abs(pos.x) <= ranges[i][j]
+                                && abs(pos.z) <= ranges[i][j])
+                            {
+                                candidates[i].locs[j][candidates[i].count[j]++] = pos; //structure found; in bounds; set the position and increment the count
+                            }
                         }
                     }
+                    if (candidates[i].count[j] == 0) { ok = false; break; }
                 }
-                if (candidates[i].count[j] == 0) { ok = false; break; }
+                if (ok && searchForStructures(&group, 0, anywhere, picked, &candidates[i])) successful[successfulCount++] = i; // found a solution, this group could work.
             }
-            if (ok && searchForStructures(&group, 0, anywhere, picked, &candidates[i])) successful[successfulCount++] = i; // found a solution, this group could work.
-        }
-        if (successfulCount == 0) goto end;
+            if (successfulCount == 0) goto end;
 
-        // 2. make sure found structures are in viable biomes
-        applySeed(params.go, DIM_OVERWORLD, seed);
-        // check if any nether terms
-        bool needNether = false;
-        for (int i = 0; i < successfulCount && !needNether; i++) { // groups in filter
-            for (int j = 0; j < params.filter.groups[successful[i]].count; j++) { // terms j in group i
-                if (configs[params.filter.groups[successful[i]].terms[j].type].dim == DIM_NETHER) { needNether = true; break; }
-            }
-        }
-        if (needNether) applySeed(params.gn, DIM_NETHER, seed);
-        int kept = 0;
-        for (int s = 0; s < successfulCount; s++) { // all sucessful groups i
-            int i = successful[s];
-            Group group = params.filter.groups[i];
-            bool ok = true;
-            for (int j = 0; j < group.count; j++) { // terms j in group i
-                Term term = group.terms[j];
-                Generator* g = configs[term.type].dim == DIM_OVERWORLD ? params.go : params.gn;
-                // keep successful positions, moving them to the front.
-                int pos_kept_count = 0;
-                for (int k = 0; k < candidates[i].count[j]; k++) {
-                    Pos pos = candidates[i].locs[j][k];
-                    if (isViableStructurePos(term.type, g, pos.x, pos.z, 0)) candidates[i].locs[j][pos_kept_count++] = pos; // if it is viable, put it into the next candidate slot
+            // 2. make sure found structures are in viable biomes
+            applySeed(params.go, DIM_OVERWORLD, seed);
+            // check if any nether terms
+            bool needNether = false;
+            for (int i = 0; i < successfulCount && !needNether; i++) { // groups in filter
+                for (int j = 0; j < params.filter.groups[successful[i]].count; j++) { // terms j in group i
+                    if (configs[params.filter.groups[successful[i]].terms[j].type].dim == DIM_NETHER) { needNether = true; break; }
                 }
-                candidates[i].count[j] = pos_kept_count;
-                if (pos_kept_count == 0) { ok = false; break; }
             }
-            if (ok && searchForStructures(&group, 0, anywhere, picked, &candidates[i])) successful[kept++] = i;
-        }
-        successfulCount = kept;
-        if (successfulCount == 0) goto end;
-
-        // 3. check near estimated spawn
-        Pos spawnEst = estimateSpawn(params.go, NULL);
-        PosBox nearSpawn = {spawnEst.x - 128, spawnEst.z - 128, spawnEst.x + 128, spawnEst.z + 128 };
-        kept = 0;
-        for (int s = 0; s < successfulCount; s++) {
-            int i = successful[s];
-            Group group = params.filter.groups[i];
-            if (searchForStructures(&group, 0, nearSpawn, picked, &candidates[i])) successful[kept++] = i;
-        }
-        successfulCount = kept;
-        if (successfulCount == 0) goto end;
-
-        // 4. check against actual spawn
-        Pos spawn = getSpawn(params.go);
-        PosBox exactSpawn = { spawn.x, spawn.z, spawn.x, spawn.z };
-        for (int s = 0; s < successfulCount; s++) {
-            int i = successful[s];
-            Group group = params.filter.groups[i];
-            if (searchForStructures(&group, 0, exactSpawn, picked, &candidates[i])) { // success!
-                flockfile(stdout); // keep other threads from writing into the middle of this line
-                printf("HIT %" PRId64 " spawn %d,%d ", seed, spawn.x, spawn.z);
-                for (int j = 0; j < group.count; j++) {
-                    printf("%s %i,%i ", struct2str(group.terms[j].type), picked[j].x, picked[j].z);
+            if (needNether) applySeed(params.gn, DIM_NETHER, seed);
+            int kept = 0;
+            for (int s = 0; s < successfulCount; s++) { // all sucessful groups i
+                int i = successful[s];
+                Group group = params.filter.groups[i];
+                bool ok = true;
+                for (int j = 0; j < group.count; j++) { // terms j in group i
+                    Term term = group.terms[j];
+                    Generator* g = configs[term.type].dim == DIM_OVERWORLD ? params.go : params.gn;
+                    // keep successful positions, moving them to the front.
+                    int pos_kept_count = 0;
+                    for (int k = 0; k < candidates[i].count[j]; k++) {
+                        Pos pos = candidates[i].locs[j][k];
+                        if (isViableStructurePos(term.type, g, pos.x, pos.z, 0)) candidates[i].locs[j][pos_kept_count++] = pos; // if it is viable, put it into the next candidate slot
+                    }
+                    candidates[i].count[j] = pos_kept_count;
+                    if (pos_kept_count == 0) { ok = false; break; }
                 }
-                printf("\n");
-                funlockfile(stdout);
-                break; //TODO remove this to print all hits for a seed
+                if (ok && searchForStructures(&group, 0, anywhere, picked, &candidates[i])) successful[kept++] = i;
             }
-        }
-        end:;
-        if (seed % 1000 == 0) {
-            fflush(stdout);
+            successfulCount = kept;
+            if (successfulCount == 0) goto end;
+
+            // 3. check near estimated spawn
+            // intentional: getSpawn can wander ~256 blocks from the estimate, so this ±128 box drops some valid seeds. that's an accepted tradeoff for skipping most getSpawn calls.
+            Pos spawnEst = estimateSpawn(params.go, NULL);
+            PosBox nearSpawn = {spawnEst.x - 128, spawnEst.z - 128, spawnEst.x + 128, spawnEst.z + 128 };
+            kept = 0;
+            for (int s = 0; s < successfulCount; s++) {
+                int i = successful[s];
+                Group group = params.filter.groups[i];
+                if (searchForStructures(&group, 0, nearSpawn, picked, &candidates[i])) successful[kept++] = i;
+            }
+            successfulCount = kept;
+            if (successfulCount == 0) goto end;
+
+            // 4. check against actual spawn
+            Pos spawn = getSpawn(params.go);
+            PosBox exactSpawn = { spawn.x, spawn.z, spawn.x, spawn.z };
+            for (int s = 0; s < successfulCount; s++) {
+                int i = successful[s];
+                Group group = params.filter.groups[i];
+                if (searchForStructures(&group, 0, exactSpawn, picked, &candidates[i])) { // success!
+                    flockfile(stdout); // keep other threads from writing into the middle of this line
+                    printf("HIT %" PRId64 " spawn %d,%d ", seed, spawn.x, spawn.z);
+                    for (int j = 0; j < group.count; j++) {
+                        printf("%s %i,%i ", struct2str(group.terms[j].type), picked[j].x, picked[j].z);
+                    }
+                    printf("\n");
+                    funlockfile(stdout);
+                    break; //TODO remove this to print all hits for a seed
+                }
+            }
+            end:;
+            if (seed % 1000 == 0) {
+                fflush(stdout);
+                if (ferror(stdout)) atomic_store(params.stop, true); // reader went away (e.g. `| head`); SIGPIPE is ignored
+            }
         }
     }
     for (int i = 0; i < params.filter.count; i++)

@@ -22,7 +22,7 @@ A filter is a list of structure names joined with `+`. Each name can take an opt
 ./seedsearch village:64 desert_pyramid:64
 ```
 
-Each match prints as `HIT <seed> <structure> <x>,<z> ...`.
+Each match prints as `HIT <seed> spawn <x>,<z> <structure> <x>,<z> ...`.
 
 ### macOS
 

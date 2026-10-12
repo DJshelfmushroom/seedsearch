@@ -24,25 +24,39 @@ bool parse_i64(const char *s, int64_t *out) {
     return true;
 }
 
+#define BATCH_SIZE 10000
+
+// static so the signal handler can reach it
+static atomic_bool stop = false;
+static void onInterrupt(int sig) { (void)sig; atomic_store(&stop, true); }
+
 void seed_search_threaded(int nthreads, int64_t startSeed, Filter filter) {
     Generator genOverworld[nthreads];
     Generator genNether[nthreads];
     pthread_t threads[nthreads];
     CheckSeedsParams params[nthreads];
-    // TODO counter with mutex for batching; modify checkSeeds as well
-    while (true) {
-        for (int t = 0; t < nthreads; t++) {
-            setupGenerator(&genOverworld[t], MC, 0);
-            setupGenerator(&genNether[t], MC, 0);
-            params[t] = (CheckSeedsParams){startSeed+(t*10000), startSeed+((t+1)*10000) - 1, &genOverworld[t], &genNether[t], filter};
-            pthread_create(&threads[t], NULL, checkSeeds, &params[t]);
-        }
-        for (int t = 0; t < nthreads; t++)
-            pthread_join(threads[t], NULL);
-        startSeed += 10000*nthreads;
-        if (ferror(stdout)) { printf("SIGPIPE, exiting."); break; }
-    }
+    int64_t nextBatch = startSeed; // next unclaimed seed, guarded by seedMutex
+    pthread_mutex_t seedMutex = PTHREAD_MUTEX_INITIALIZER;
 
+    // ctrl-c (or kill) asks the threads to finish up; SA_RESETHAND makes a second ctrl-c kill it outright
+    struct sigaction sa = { .sa_handler = onInterrupt, .sa_flags = SA_RESETHAND };
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGTERM, &sa, NULL);
+    signal(SIGPIPE, SIG_IGN); // a closed pipe shows up as ferror(stdout) in the threads instead of killing us
+
+    for (int t = 0; t < nthreads; t++) {
+        setupGenerator(&genOverworld[t], MC, 0);
+        setupGenerator(&genNether[t], MC, 0);
+        params[t] = (CheckSeedsParams){&nextBatch, BATCH_SIZE, &genOverworld[t], &genNether[t], filter, &stop, &seedMutex};
+        pthread_create(&threads[t], NULL, checkSeeds, &params[t]);
+    }
+    // threads only return once stop is set; joining keeps the locals above alive until they're done
+    for (int t = 0; t < nthreads; t++)
+        pthread_join(threads[t], NULL);
+
+    fflush(stdout);
+    if (ferror(stdout)) fprintf(stderr, "output closed, exiting.\n");
 }
 
 static inline int max(int a, int b) { return a > b ? a : b; }

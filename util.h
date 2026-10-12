@@ -4,6 +4,7 @@
 #include "cubiomes/util.h"
 #include "seedsearch.h"
 #include <pthread.h>
+#include <stdatomic.h>
 #include <stdio.h>
 
 
@@ -18,11 +19,13 @@ typedef struct { Term terms[MAX_TERMS]; int count; } Group;   // all must match
 typedef struct { Group groups[MAX_TERMS]; int count; } Filter;
 
 typedef struct {
-    int64_t start;
-    int64_t end;
+    int64_t* start;
+    int64_t offset;
     Generator* go;
     Generator* gn;
     Filter filter;
+    atomic_bool* stop; // atomic so the ctrl-c handler can set it (it can't lock a mutex)
+    pthread_mutex_t* mtx; // guards start
 } CheckSeedsParams;
 
 typedef struct {
