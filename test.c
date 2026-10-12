@@ -74,6 +74,44 @@ static void test_getConfig(void) {
     assert(!config.rarity); // 0
 }
 
+static void test_searchForStructures(void) {
+    initConfigs(MC);
+    Pos picked[MAX_TERMS];
+    Pos ow[2], ne[2];
+    GroupCandidates c = {{ow, ne}, {1, 1}};
+
+    // overworld from spawn: spawn has to be within dist of the structure
+    Group g = {{{Village, 96, FROM_SPAWN}}, 1};
+    ow[0] = (Pos){100, 0};
+    assert(!searchForStructures(&g, 0, (PosBox){0, 0, 0, 0}, picked, &c));
+    assert(searchForStructures(&g, 0, (PosBox){4, 0, 4, 0}, picked, &c));
+    assert(picked[0].x == 100 && picked[0].z == 0);
+
+    // nether from spawn: spawn/8 within dist, so a nether block covers 8 overworld blocks (the +7)
+    g = (Group){{{Fortress, 0, FROM_SPAWN}}, 1};
+    c.locs[0] = ne;
+    ne[0] = (Pos){10, 0};
+    assert(searchForStructures(&g, 0, (PosBox){80, 0, 80, 0}, picked, &c));
+    assert(searchForStructures(&g, 0, (PosBox){87, 0, 87, 0}, picked, &c));
+    assert(!searchForStructures(&g, 0, (PosBox){88, 0, 88, 0}, picked, &c));
+    assert(!searchForStructures(&g, 0, (PosBox){79, 0, 79, 0}, picked, &c));
+
+    // two spawn terms whose boxes don't overlap can't both hold
+    g = (Group){{{Village, 10, FROM_SPAWN}, {Village, 10, FROM_SPAWN}}, 2};
+    c.locs[0] = ow; c.locs[1] = ow + 1;
+    ow[0] = (Pos){0, 0}; ow[1] = (Pos){100, 0};
+    assert(!searchForStructures(&g, 0, (PosBox){-524, -524, 524, 524}, picked, &c));
+
+    // anchored overworld -> nether uses floordiv, and backtracks to the candidate that works
+    g = (Group){{{Village, 1000, FROM_SPAWN}, {Fortress, 5, 0}}, 2};
+    c.locs[0] = ow; c.locs[1] = ne;
+    c.count[0] = 2; c.count[1] = 1;
+    ow[0] = (Pos){200, 0}; ow[1] = (Pos){-1, 0}; // floordiv(-1, 8) == -1, truncation would give 0
+    ne[0] = (Pos){-6, 0};
+    assert(searchForStructures(&g, 0, (PosBox){0, 0, 0, 0}, picked, &c));
+    assert(picked[0].x == -1 && picked[1].x == -6);
+}
+
 static void test_parse_group(void) {
     struct {
         const char *input;
@@ -122,6 +160,7 @@ int main(void) {
     test_getConfig();
     test_structureCheck();
     test_structurePosCheck();
+    test_searchForStructures();
     test_parse_group();
     printf(GREEN "all tests pass\n" RESET);
     return 0;
