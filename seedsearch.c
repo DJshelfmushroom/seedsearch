@@ -141,7 +141,7 @@ void *checkSeeds(void *arg) {
             if (successfulCount == 0) goto end;
 
             // 4. check against actual spawn
-            Pos spawn = getSpawn(params.go);
+            Pos spawn = getSpawnEstimated(params.go, spawnEst, 0);
             PosBox exactSpawn = { spawn.x, spawn.z, spawn.x, spawn.z };
             for (int s = 0; s < successfulCount; s++) {
                 int i = successful[s];

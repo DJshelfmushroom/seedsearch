@@ -1,3 +1,4 @@
 [submodule "cubiomes"]
 	path = cubiomes
-	url = https://github.com/Cubitect/cubiomes
+	url = https://github.com/DJshelfmushroom/cubiomes
+	branch = get-spawn-estimated
