@@ -38,13 +38,17 @@ void seed_search_threaded(int nthreads, int64_t startSeed, Filter filter) {
     int64_t nextBatch = startSeed; // next unclaimed seed, guarded by seedMutex
     pthread_mutex_t seedMutex = PTHREAD_MUTEX_INITIALIZER;
 
+#ifdef _WIN32
+    signal(SIGINT, onInterrupt);
+    signal(SIGTERM, onInterrupt);
+#else
     // ctrl-c (or kill) asks the threads to finish up; SA_RESETHAND makes a second ctrl-c kill it outright
     struct sigaction sa = { .sa_handler = onInterrupt, .sa_flags = SA_RESETHAND };
     sigemptyset(&sa.sa_mask);
     sigaction(SIGINT, &sa, NULL);
     sigaction(SIGTERM, &sa, NULL);
     signal(SIGPIPE, SIG_IGN); // a closed pipe shows up as ferror(stdout) in the threads instead of killing us
-
+#endif
     for (int t = 0; t < nthreads; t++) {
         setupGenerator(&genOverworld[t], MC, 0);
         setupGenerator(&genNether[t], MC, 0);

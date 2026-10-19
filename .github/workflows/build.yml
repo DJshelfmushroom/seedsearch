@@ -7,6 +7,9 @@ jobs:
   build:
     name: Build (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: ${{ matrix.shell || 'bash' }}
     strategy:
       matrix:
         include:
@@ -15,28 +18,35 @@ jobs:
           - os: macos-latest
             platform: macos-universal
             make-args: ARCHFLAGS="-arch arm64 -arch x86_64"
-          #INCLUDE WINDOWS LATER
-          # - os: windows-latest
-          #   platform: windows-x86_64
-          #   make-args: CC=gcc
+          - os: windows-latest
+            platform: windows-x86_64
+            make-args: CC=gcc
+            shell: msys2 {0}
 
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
+      - uses: msys2/setup-msys2@v2
+        if: runner.os == 'Windows'
+        with:
+          msystem: UCRT64
+          install: make zip mingw-w64-ucrt-x86_64-gcc
       - name: build
         run: make release ${{ matrix.make-args }}
       - name: test
         run:  make test ${{ matrix.make-args }}
       - name: package
-        shell: bash
         run: |
-          ext=""; [ -f main.exe ] && ext=.exe
-          mkdir dist
-          mv main$ext dist/seedsearch$ext
-          # windows could use a .zip instead
-          pkg=seedsearch-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz
-          tar czf "$pkg" -C dist "seedsearch$ext"
+          if [ -f main.exe ]; then
+            mkdir dist && mv main.exe dist/seedsearch.exe
+            pkg=seedsearch-${{ github.ref_name }}-${{ matrix.platform }}.zip
+            (cd dist && zip "../$pkg" seedsearch.exe)
+          else
+            mkdir dist && mv main dist/seedsearch
+            pkg=seedsearch-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz
+            tar czf "$pkg" -C dist seedsearch
+          fi
           echo "PKG=$pkg" >> "$GITHUB_ENV"
       - name: upload package
         uses: actions/upload-artifact@v7
@@ -82,7 +92,7 @@ jobs:
           mv whats-new.tmp whats-new.md
       - name: create release
         run: |
-          gh release create "$TAG" seedsearch-*.tar.gz \
+          gh release create "$TAG" seedsearch-*.tar.gz seedsearch-*.zip \
             --title "$TAG" \
             --notes "$(sed "s/{{TAG}}/$TAG/g" .github/release-header.md; echo; cat whats-new.md 2>/dev/null)" \
             --generate-notes \

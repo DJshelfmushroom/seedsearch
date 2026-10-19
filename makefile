@@ -5,6 +5,9 @@ ARCHFLAGS ?=
 CFLAGS = -O3 -flto -fwrapv -pthread -Icubiomes $(ARCHFLAGS) $(WARNINGS)
 DEBUGFLAGS = -g -O0 -fwrapv -pthread -Icubiomes $(ARCHFLAGS) $(WARNINGS)
 LDLIBS = -lm
+ifeq ($(OS),Windows_NT)
+LDLIBS += -static
+endif
 
 # everything except the two files that define main()
 LIB_SRCS = seedsearch.c util.c parseargs.c cpucount.c
@@ -27,7 +30,7 @@ main-debug: main.c $(LIB_SRCS) $(HEADERS) $(CUBIOMES)
 test: test.c $(LIB_SRCS) $(HEADERS) $(CUBIOMES)
 	$(CC) $(DEBUGFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
 	./test
-	$(RM) -r ./test ./test.dSYM
+	$(RM) -r ./test ./test.dSYM ./test.exe
 
 $(CUBIOMES): cubiomes/makefile $(wildcard cubiomes/*.c cubiomes/*.h)
 	$(MAKE) -C cubiomes release CC="$(CC)" CFLAGS="$(ARCHFLAGS)"
@@ -39,5 +42,5 @@ cubiomes/makefile:
 .PHONY: release clean test debug native
 
 clean:
-	$(RM) -r main main-debug test *.dSYM
+	$(RM) -r main main-debug test *.exe *.dSYM
 	if [ -f cubiomes/makefile ]; then $(MAKE) -C cubiomes clean; fi

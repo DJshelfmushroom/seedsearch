@@ -11,6 +11,13 @@
 // how far spawn can be from 0,0 on either axis
 #define SPAWN_RANGE 524
 
+// windows _lock/unlock_file do the same as flock/unlockfile
+#ifdef _WIN32
+#define flockfile _lock_file
+#define funlockfile _unlock_file
+#endif
+
+
 StructureConfig configs[FEATURE_NUM];
 static bool configValid[FEATURE_NUM];
 
