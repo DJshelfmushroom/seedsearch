@@ -1,0 +1,30 @@
+name: Test
+on:
+  push:
+    branches: ['**']   # tags go through release.yml instead
+  pull_request:
+  workflow_call:
+jobs:
+  matrix:
+    uses: ./.github/workflows/setup-matrix.yml
+  test:
+    name: Test (${{ matrix.platform }})
+    needs: matrix
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: ${{ matrix.shell || 'bash' }}
+    strategy:
+      matrix: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: msys2/setup-msys2@v2
+        if: runner.os == 'Windows'
+        with:
+          msystem: UCRT64
+          install: make mingw-w64-ucrt-x86_64-gcc
+      - name: test
+        run: make test ${{ matrix.make-args }}

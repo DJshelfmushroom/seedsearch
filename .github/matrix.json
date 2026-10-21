@@ -1,0 +1,19 @@
+{
+  "include": [
+    {
+      "os": "ubuntu-latest",
+      "platform": "linux-x86_64"
+    },
+    {
+      "os": "macos-latest",
+      "platform": "macos-universal",
+      "make-args": "ARCHFLAGS=\"-arch arm64 -arch x86_64\""
+    },
+    {
+      "os": "windows-latest",
+      "platform": "windows-x86_64",
+      "make-args": "CC=gcc",
+      "shell": "msys2 {0}"
+    }
+  ]
+}

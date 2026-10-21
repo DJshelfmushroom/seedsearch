@@ -1,0 +1,19 @@
+name: Setup matrix
+on:
+  workflow_call:
+    outputs:
+      matrix:
+        value: ${{ jobs.setup.outputs.matrix }}
+jobs:
+  setup:
+    name: Read matrix.json
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.read.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/matrix.json
+          sparse-checkout-cone-mode: false
+      - id: read
+        run: echo "matrix=$(jq -c . .github/matrix.json)" >> "$GITHUB_OUTPUT"
