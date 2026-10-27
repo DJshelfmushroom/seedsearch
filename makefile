@@ -15,16 +15,16 @@ HEADERS = $(wildcard *.h)
 CUBIOMES = cubiomes/libcubiomes.a
 
 .DEFAULT_GOAL := release
-release: main
-debug: main-debug
+release: seedsearch
+debug: seedsearch-debug
 
 native:
 	$(MAKE) ARCHFLAGS=-march=native
 
-main: main.c $(LIB_SRCS) $(HEADERS) $(CUBIOMES)
+seedsearch: main.c $(LIB_SRCS) $(HEADERS) $(CUBIOMES)
 	$(CC) $(CFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
 
-main-debug: main.c $(LIB_SRCS) $(HEADERS) $(CUBIOMES)
+seedsearch-debug: main.c $(LIB_SRCS) $(HEADERS) $(CUBIOMES)
 	$(CC) $(DEBUGFLAGS) -o $@ $(filter-out %.h,$^) $(LDLIBS)
 
 test: test.c $(LIB_SRCS) $(HEADERS) $(CUBIOMES)
@@ -42,5 +42,5 @@ cubiomes/makefile:
 .PHONY: release clean test debug native
 
 clean:
-	$(RM) -r main main-debug test *.exe *.dSYM
+	$(RM) -r seedsearch seedsearch-debug test *.exe *.dSYM
 	if [ -f cubiomes/makefile ]; then $(MAKE) -C cubiomes clean; fi

@@ -32,12 +32,12 @@ jobs:
         run: make release ${{ matrix.make-args }}
       - name: package
         run: |
-          if [ -f main.exe ]; then
-            mkdir dist && mv main.exe dist/seedsearch.exe
+          if [ -f seedsearch.exe ]; then
+            mkdir dist && mv seedsearch.exe dist/seedsearch.exe
             pkg=seedsearch-${{ inputs.version }}-${{ matrix.platform }}.zip
             (cd dist && zip "../$pkg" seedsearch.exe)
           else
-            mkdir dist && mv main dist/seedsearch
+            mkdir dist && mv seedsearch dist/seedsearch
             pkg=seedsearch-${{ inputs.version }}-${{ matrix.platform }}.tar.gz
             tar czf "$pkg" -C dist seedsearch
           fi

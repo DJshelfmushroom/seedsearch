@@ -1,5 +1,7 @@
-main*
+seedsearch
+seedsearch-debug
 test
+*.exe
 *.o
 *.out
 build/
