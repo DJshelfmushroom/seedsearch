@@ -6,5 +6,5 @@
 #include <stdbool.h>
 
 bool parse_group(char *text, Group *g);
-int64_t parse_args(int argc, char **argv, char** patterns);
+int64_t parse_args(int argc, char **argv, char** patterns, int64_t* endseed);
 #endif //SEEDSEARCH_PARSEARGS_H

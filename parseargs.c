@@ -44,7 +44,7 @@ bool parse_group(char *text, Group *g) {
 }
 
 static void usage(FILE *out, const char *prog) {
-    fprintf(out, "usage: %s [-s seed] <filter> [filter]...\n\n"
+    fprintf(out, "usage: %s [-s seed] [-e end seed] <filter> [filter]...\n\n"
                  "A filter is a list of structure names joined with + signs, each with an optional :distance to check from spawn (default 96, max 2048).\n"
                  "For example, ruined_portal+fortress:128\n\n"
                  "Add @name after a structure to measure its distance from an earlier structure in the group instead of from spawn.\n"
@@ -52,17 +52,26 @@ static void usage(FILE *out, const char *prog) {
                  "Separate filters with spaces to accept seeds that match any of them.\n", prog);
 }
 
-int64_t parse_args(int argc, char *argv[], char* patterns[]) {
+int64_t parse_args(int argc, char *argv[], char* patterns[], int64_t* endseed) {
     int opt;
     uint64_t rng;
     setSeed(&rng, time(NULL));
     int64_t seed = (int64_t) nextLong(&rng);
-    while ((opt = getopt(argc, argv, ":s:h")) != -1) {
+    while ((opt = getopt(argc, argv, ":s:e:h")) != -1) {
         switch (opt) {
             case 's':
                 if (!parse_i64(optarg, &seed)) {
                     fprintf(stderr, "invalid seed: %s\n", optarg);
                     exit(1);
+                }
+                break;
+            case 'e':
+                if (!parse_i64(optarg, endseed)) {
+                    fprintf(stderr, "invalid end seed: %s\n", optarg);
+                    exit(1);
+                }
+                if (*endseed < seed) {
+                    fprintf(stderr, "end seed must be larger than starting seed: %s < %"PRId64, optarg, seed);
                 }
                 break;
             case 'h':

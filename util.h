@@ -21,6 +21,7 @@ typedef struct { Group groups[MAX_TERMS]; int count; } Filter;
 typedef struct {
     int64_t* start;
     int64_t offset;
+    int64_t end;
     Generator* go;
     Generator* gn;
     Filter filter;
@@ -43,7 +44,7 @@ typedef struct {
 
 int str2struct(const char *name);
 bool parse_i64(const char *s, int64_t *out);
-void seed_search_threaded(int nthreads, int64_t startSeed, Filter filter);
+void seed_search_threaded(int nthreads, int64_t startSeed, int64_t stopSeed, Filter filter);
 /**
  * checks all possible positions for a given Term within an area, with reference to previous positions for anchored terms
  * @param group the group to check

@@ -8,7 +8,8 @@ int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IOFBF, 0);
     int nthreads = cpuCount();
     char* patterns[argc];
-    int64_t seed = parse_args(argc, argv, patterns);
+    int64_t endseed = INT64_MAX;
+    int64_t seed = parse_args(argc, argv, patterns, &endseed);
     initConfigs(MC);
     Filter filter;
     int ngroups = 0;
@@ -25,6 +26,6 @@ int main(int argc, char **argv) {
         }
     }
     filter.count = ngroups;
-    seed_search_threaded(nthreads, seed, filter);
+    seed_search_threaded(nthreads, seed, endseed, filter);
     return 0;
 }

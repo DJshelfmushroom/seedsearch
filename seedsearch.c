@@ -68,8 +68,10 @@ void *checkSeeds(void *arg) {
             int64_t batch = *params.start;
             *params.start += params.offset;
         pthread_mutex_unlock(params.mtx);
+        if (batch > params.end){ break; }
         // checked every seed so ctrl-c doesn't wait for the batch to finish; relaxed is enough for a flag
         for (int64_t seed = batch; seed < batch + params.offset && !atomic_load_explicit(params.stop, memory_order_relaxed); seed++) {
+            if (seed > params.end) break;
             int successful[MAX_TERMS]; // indicies of successful groups
             int successfulCount = 0;
             Pos picked[MAX_TERMS];
