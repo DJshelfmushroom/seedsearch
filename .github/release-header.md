@@ -11,7 +11,7 @@ Finds Minecraft Java Edition 1.16.1 seeds that have the structures you choose ne
 
 ```sh
 tar xzf seedsearch-{{TAG}}-*.tar.gz
-./seedsearch [-s seed] <filter>...
+./seedsearch [-s seed] [-e end seed] <filter>...
 ```
 
 A filter is a list of structure names joined with `+`. Each name can take an optional `:distance` to check from spawn (default 96, max 2048). Add `@name` after a structure to measure its distance from an earlier structure in the filter instead of from spawn. To accept seeds that match any one of several filters, separate the filters with spaces.

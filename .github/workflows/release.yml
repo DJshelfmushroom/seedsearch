@@ -10,6 +10,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       version: ${{ github.ref_name }}
+    needs: test
   release:
     name: Release
     runs-on: ubuntu-latest
@@ -44,7 +45,7 @@ jobs:
             git diff --stat "${prev:-$empty}" "$TAG"
           } > context.txt
           curl -fsSL https://claude.ai/install.sh | bash
-          ~/.local/bin/claude -p --model opus --tools "" --max-turns 1 --no-session-persistence \
+          ~/.local/bin/claude -p --model sonnet --tools "" --max-turns 1 --no-session-persistence \
             "$(cat .github/release-notes-prompt.md)" < context.txt > whats-new.tmp
           mv whats-new.tmp whats-new.md
       - name: create release
