@@ -7,11 +7,11 @@
 #include <string.h>
 #include <time.h>
 
-bool parse_group(char *text, Group *g) {
+int parse_group(char *text, Group *g) {
     g->count = 0;
     // loop through the text, splitting by "+". when strtok returns NULL, the loop exits.
     for (char *term = strtok(text, "+"); term; term = strtok(NULL, "+"), g->count++) {
-        if (g->count >= MAX_TERMS) return false; // improper group, too many terms.
+        if (g->count >= MAX_TERMS) return term - text; // improper group, too many terms.
         Term* t = &(g->terms[g->count]);
         t->dist = 96;
         t->from = FROM_SPAWN;
@@ -19,12 +19,12 @@ bool parse_group(char *text, Group *g) {
         if (at != NULL) {
             *at = '\0'; // structure:123@anchor becomes "structure:123" and "anchor"
             int anchor = str2struct(at + 1);
-            if (anchor < 0) return false; // anchor isn't a structure
+            if (anchor < 0) return at + 1 - text; // anchor isn't a structure
             // get the closest anchor (not the first)
             for (int k = g->count - 1; k >= 0 && t->from == FROM_SPAWN; k--) {
                 if (g->terms[k].type == anchor) t->from = k;
             }
-            if (t->from == FROM_SPAWN) return false; // anchor has to come earlier in the group
+            if (t->from == FROM_SPAWN) return at + 1 - text; // anchor has to come earlier in the group
         }
         char* colon = strchr(term, ':');
         if (colon != NULL){
@@ -32,15 +32,15 @@ bool parse_group(char *text, Group *g) {
             *colon = '\0'; // structure:123 becomes "structure" and "123"
             int64_t dist;
             if (!parse_i64(colon + 1, &dist) || dist <= 0 || dist > 2048) {
-                return false; // not a number, or not a sensible distance
+                return colon + 1 - text; // not a number, or not a sensible distance
             }
             t->dist = (int)dist;
         }
         t->type = str2struct(term);
         StructureConfig sc;
-        if (t->type < 0 || !getConfig(t->type, &sc)) return false; // not a structure
+        if (t->type < 0 || !getConfig(t->type, &sc)) return term - text; // not a structure
     }
-    return g->count > 0; // false for an empty group
+    return g->count > 0?-1:0; // false for an empty group
 }
 
 static void usage(FILE *out, const char *prog) {

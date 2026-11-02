@@ -20,8 +20,19 @@ int main(int argc, char **argv) {
         }
         char original[strlen(patterns[i]) + 1];
         strcpy(original, patterns[i]); // parse_group writes over its input, save this in case error
-        if (!parse_group(patterns[i], &filter.groups[i])) {
-            fprintf(stderr, "invalid filter: %s\n", original);
+        int parse_out = parse_group(patterns[i], &filter.groups[i]);
+        char ftext[sizeof(original) + 5];
+        if (parse_out != -1) {
+            for (int j = 0; j <= parse_out; j++) {
+                if (j < parse_out) {
+                    ftext[j] = ' ';
+                } else {
+                    ftext[j] = '^';
+                }
+            }
+            ftext[parse_out+1] = '\0';
+            strcat(ftext, "HERE");
+            fprintf(stderr, "invalid filter:\n%s\n%s\n", original, ftext);
             return 1;
         }
     }

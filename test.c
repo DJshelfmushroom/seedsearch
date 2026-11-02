@@ -143,7 +143,7 @@ static void test_parse_group(void) {
         char str[128];
         strcpy(str, cases[i].input);
         Group g;
-        bool ok = parse_group(str, &g);
+        bool ok = parse_group(str, &g) == -1;
 
         assert(ok == cases[i].ok);
         if (!ok) continue;
