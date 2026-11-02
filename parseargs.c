@@ -37,6 +37,7 @@ int parse_group(char *text, Group *g) {
             t->dist = (int)dist;
         }
         t->type = str2struct(term);
+        if (t->type == 20 || t->type == 21) return term - text; // end gateway or end city TODO:implement
         StructureConfig sc;
         if (t->type < 0 || !getConfig(t->type, &sc)) return term - text; // not a structure
     }
@@ -70,9 +71,7 @@ int64_t parse_args(int argc, char *argv[], char* patterns[], int64_t* endseed) {
                     fprintf(stderr, "invalid end seed: %s\n", optarg);
                     exit(1);
                 }
-                if (*endseed < seed) {
-                    fprintf(stderr, "end seed must be larger than starting seed: %s < %"PRId64, optarg, seed);
-                }
+
                 break;
             case 'h':
                 usage(stderr, argv[0]);
@@ -86,6 +85,10 @@ int64_t parse_args(int argc, char *argv[], char* patterns[], int64_t* endseed) {
                 usage(stderr, argv[0]);
                 exit(1);
         }
+    }
+    if (*endseed < seed) {
+        fprintf(stderr, "end seed must be larger than starting seed: %"PRId64" < %"PRId64, *endseed, seed);
+        exit(1);
     }
     if (optind >= argc) { // nothing to search for
         usage(stderr, argv[0]);
