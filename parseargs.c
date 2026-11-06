@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <getopt.h>
 
 int parse_group(char *text, Group *g) {
     g->count = 0;
@@ -45,7 +46,11 @@ int parse_group(char *text, Group *g) {
 }
 
 static void usage(FILE *out, const char *prog) {
-    fprintf(out, "usage: %s [-s seed] [-e end seed] <filter> [filter]...\n\n"
+    fprintf(out, "\nusage: %s [options] <filter> [filter]...\n\n"
+                 "Options:\n"
+                 "  -s, --seed=SEED    first seed to check (default: random)\n"
+                 "  -e, --end=SEED     last seed to check, included (default: run until Ctrl-C)\n"
+                 "  -h, --help         show this help\n\n"
                  "A filter is a list of structure names joined with + signs, each with an optional :distance to check from spawn (default 96, max 2048).\n"
                  "For example, ruined_portal+fortress:128\n\n"
                  "Add @name after a structure to measure its distance from an earlier structure in the group instead of from spawn.\n"
@@ -55,10 +60,18 @@ static void usage(FILE *out, const char *prog) {
 
 int64_t parse_args(int argc, char *argv[], char* patterns[], int64_t* endseed) {
     int opt;
+    static struct option longopts[] = {
+        {"help", no_argument, 0, 'h'},
+        {"list", no_argument, 0, 'l'},
+        {"seed", required_argument, 0, 's'},
+        {"end", required_argument, 0, 'e'},
+        {"max-hits", required_argument, 0, 'm'}, //TODO implement
+        {0,0,0,0}
+    };
     uint64_t rng;
     setSeed(&rng, time(NULL));
     int64_t seed = (int64_t) nextLong(&rng);
-    while ((opt = getopt(argc, argv, ":s:e:h")) != -1) {
+    while ((opt = getopt_long(argc, argv, "s:e:m:hl", longopts, NULL)) != -1) {
         switch (opt) {
             case 's':
                 if (!parse_i64(optarg, &seed)) {
@@ -71,23 +84,30 @@ int64_t parse_args(int argc, char *argv[], char* patterns[], int64_t* endseed) {
                     fprintf(stderr, "invalid end seed: %s\n", optarg);
                     exit(1);
                 }
-
                 break;
             case 'h':
                 usage(stderr, argv[0]);
                 exit(0);
                 break;
-            case ':':
-                fprintf(stderr, "option -%c needs a value\n", optopt);
+            case 'm':
+                fprintf(stderr, "max-hits not implemented yet.\n");
                 exit(1);
-            default:
-                fprintf(stderr, "unknown option -%c\n", optopt);
+                break;
+            case 'l':
+                fprintf(stderr, "list not implemented yet.\n");
+                exit(1);
+                break;
+            case '?':
                 usage(stderr, argv[0]);
                 exit(1);
+                break;
+            default:
+                fprintf(stderr, "%s: bug: unhandled option value %d\n", argv[0], opt);
+                abort();
         }
     }
     if (*endseed < seed) {
-        fprintf(stderr, "end seed must be larger than starting seed: %"PRId64" < %"PRId64, *endseed, seed);
+        fprintf(stderr, "end seed must be larger than starting seed: %"PRId64" < %"PRId64"\n", *endseed, seed);
         exit(1);
     }
     if (optind >= argc) { // nothing to search for
