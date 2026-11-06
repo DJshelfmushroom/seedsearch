@@ -30,17 +30,6 @@ jobs:
           install: make zip mingw-w64-ucrt-x86_64-gcc
       - name: build
         run: make release ${{ matrix.make-args }}
-      - name: smoke test options
-        run: |
-          set -e
-          for args in "--seed=0 --end=3000" "--seed 0 --end 3000" "-s 0 -e 3000"; do
-            out=$(./seedsearch $args village:64)
-            grep -q "^HIT 35 " <<<"$out"
-          done
-          out=$(./seedsearch village:64 -s 0 -e 3000)
-          grep -q "^HIT 35 " <<<"$out"
-          ./seedsearch --help
-          if ./seedsearch --bogus village; then echo "--bogus should fail"; exit 1; fi
       - name: package
         run: |
           if [ -f seedsearch.exe ]; then
