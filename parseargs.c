@@ -45,7 +45,7 @@ int parse_group(char *text, Group *g) {
     return g->count > 0?-1:0; // false for an empty group
 }
 
-static void usage(FILE *out, const char *prog) {
+static void usage(FILE* out, const char* prog) {
     fprintf(out, "\nusage: %s [options] <filter> [filter]...\n\n"
                  "Options:\n"
                  "  -s, --seed=SEED    first seed to check (default: random)\n"
@@ -56,6 +56,17 @@ static void usage(FILE *out, const char *prog) {
                  "Add @name after a structure to measure its distance from an earlier structure in the group instead of from spawn.\n"
                  "For example, ruined_portal+bastion_remnant:64@ruined_portal+fortress:128@bastion_remnant\n\n"
                  "Separate filters with spaces to accept seeds that match any of them.\n", prog);
+}
+
+static void list(FILE* out) {
+    fprintf(out, "\nAvailable structures:\n");
+    for (int i = 0; i < FEATURE_NUM; i++) {
+        const char* str = struct2str(i);
+        if (str == NULL) continue;
+        StructureConfig sc;
+        if (!(getStructureConfig(i, MC, &sc) && sc.dim != DIM_END)) continue;
+        fprintf(out, "\t%s\n", struct2str(i));
+    }
 }
 
 int64_t parse_args(int argc, char *argv[], char* patterns[], int64_t* endseed) {
@@ -94,8 +105,8 @@ int64_t parse_args(int argc, char *argv[], char* patterns[], int64_t* endseed) {
                 exit(1);
                 break;
             case 'l':
-                fprintf(stderr, "list not implemented yet.\n");
-                exit(1);
+                list(stdout);
+                exit(0);
                 break;
             case '?':
                 usage(stderr, argv[0]);

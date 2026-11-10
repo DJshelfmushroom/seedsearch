@@ -66,9 +66,11 @@ On Windows, build in an MSYS2 UCRT64 shell with `make CC=gcc`.
 
 | Option | Meaning |
 | --- | --- |
-| `-s seed` | First seed to check. Without it, seedsearch starts at a random seed. |
-| `-e seed` | Last seed to check (this seed is included). Without it, seedsearch runs until you press Ctrl-C. |
-| `-h` | Show the help text. |
+| `-s`, `--seed seed` | First seed to check. Without it, seedsearch starts at a random seed. |
+| `-e`, `--end seed` | Last seed to check (this seed is included). Without it, seedsearch runs until you press Ctrl-C. |
+| `-h`, `--help` | Show the help text. |
+| `-l`, `--list` | List all compatible structures. |
+
 
 ## Filters
 
@@ -116,6 +118,8 @@ Separate filters with spaces. A seed matches when it matches any one of them.
 A filter can have up to 8 structures, and you can give up to 8 filters.
 
 ### Structure names
+
+Mirrored in `./seedsearch --list`
 
 | Name | Dimension |
 | --- | --- |
