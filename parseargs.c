@@ -79,12 +79,14 @@ int64_t parse_args(int argc, char *argv[], char* patterns[], int64_t* endseed, i
         {"seed", required_argument, 0, 's'},
         {"end", required_argument, 0, 'e'},
         {"max-hits", required_argument, 0, 'm'},
+        {"json", no_argument, 0, 'j'}, //TODO implement JSON
+        {"out", required_argument, 0, 'o'}, //TODO implement outfile
         {0,0,0,0}
     };
     uint64_t rng;
     setSeed(&rng, time(NULL));
     int64_t seed = (int64_t) nextLong(&rng);
-    while ((opt = getopt_long(argc, argv, "s:e:m:hl", longopts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "s:e:m:jo:hl", longopts, NULL)) != -1) {
         switch (opt) {
             case 's':
                 if (!parse_i64(optarg, &seed)) {
@@ -111,6 +113,14 @@ int64_t parse_args(int argc, char *argv[], char* patterns[], int64_t* endseed, i
             case 'l':
                 list(stdout);
                 exit(0);
+                break;
+            case 'j':
+                fprintf(stderr, "this'll output JSON at some point.\n");
+                exit(1);
+                break;
+            case 'o':
+                fprintf(stderr, "this'll output to a file at some point.\n");
+                exit(1);
                 break;
             case '?':
                 usage(stderr, argv[0]);
