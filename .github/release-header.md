@@ -4,6 +4,7 @@ Finds Minecraft Java Edition 1.16.1 seeds that have the structures you choose ne
 
 | Platform | File |
 | --- | --- |
+| Windows (x86_64) | `seedsearch-{{TAG}}-windows-x86_64.zip` |
 | Linux (x86_64) | `seedsearch-{{TAG}}-linux-x86_64.tar.gz` |
 | macOS (Apple Silicon and Intel) | `seedsearch-{{TAG}}-macos-universal.tar.gz` |
 
@@ -13,16 +14,6 @@ Finds Minecraft Java Edition 1.16.1 seeds that have the structures you choose ne
 tar xzf seedsearch-{{TAG}}-*.tar.gz
 ./seedsearch [-s seed] [-e end seed] <filter>...
 ```
-
-A filter is a list of structure names joined with `+`. Each name can take an optional `:distance` to check from spawn (default 96, max 2048). Add `@name` after a structure to measure its distance from an earlier structure in the filter instead of from spawn. To accept seeds that match any one of several filters, separate the filters with spaces.
-
-```sh
-./seedsearch ruined_portal+fortress:128
-./seedsearch ruined_portal+bastion_remnant:64@ruined_portal+fortress:128@bastion_remnant
-./seedsearch village:64 desert_pyramid:64
-```
-
-Each match prints as `HIT <seed> spawn <x>,<z> <structure> <x>,<z> ...`.
 
 ### macOS
 
