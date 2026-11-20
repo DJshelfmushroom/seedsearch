@@ -22,10 +22,12 @@ typedef struct {
     int64_t* start;
     int64_t offset;
     int64_t end;
+    int64_t max_hits;
     Generator* go;
     Generator* gn;
     Filter filter;
     atomic_bool* stop; // atomic so the ctrl-c handler can set it (it can't lock a mutex)
+    atomic_int* hits_counter;
     pthread_mutex_t* mtx; // guards start
 } CheckSeedsParams;
 
@@ -44,7 +46,7 @@ typedef struct {
 
 int str2struct(const char *name);
 bool parse_i64(const char *s, int64_t *out);
-void seed_search_threaded(int nthreads, int64_t startSeed, int64_t stopSeed, Filter filter);
+void seed_search_threaded(int nthreads, int64_t startSeed, int64_t stopSeed, int64_t maxhits, Filter filter);
 /**
  * checks all possible positions for a given Term within an area, with reference to previous positions for anchored terms
  * @param group the group to check

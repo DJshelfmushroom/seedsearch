@@ -7,6 +7,7 @@
 #include <string.h>
 #include <time.h>
 #include <getopt.h>
+#include <limits.h>
 
 int parse_group(char *text, Group *g) {
     g->count = 0;
@@ -50,6 +51,7 @@ static void usage(FILE* out, const char* prog) {
                  "Options:\n"
                  "  -s, --seed=SEED    first seed to check (default: random)\n"
                  "  -e, --end=SEED     last seed to check, included (default: run until Ctrl-C)\n"
+                 "  -m, --max-hits=N   stop after N hits (default: unlimited)\n"
                  "  -h, --help         show this help\n\n"
                  "A filter is a list of structure names joined with + signs, each with an optional :distance to check from spawn (default 96, max 2048).\n"
                  "For example, ruined_portal+fortress:128\n\n"
@@ -69,14 +71,14 @@ static void list(FILE* out) {
     }
 }
 
-int64_t parse_args(int argc, char *argv[], char* patterns[], int64_t* endseed) {
+int64_t parse_args(int argc, char *argv[], char* patterns[], int64_t* endseed, int64_t* maxhits) {
     int opt;
     static struct option longopts[] = {
         {"help", no_argument, 0, 'h'},
         {"list", no_argument, 0, 'l'},
         {"seed", required_argument, 0, 's'},
         {"end", required_argument, 0, 'e'},
-        {"max-hits", required_argument, 0, 'm'}, //TODO implement
+        {"max-hits", required_argument, 0, 'm'},
         {0,0,0,0}
     };
     uint64_t rng;
@@ -101,8 +103,10 @@ int64_t parse_args(int argc, char *argv[], char* patterns[], int64_t* endseed) {
                 exit(0);
                 break;
             case 'm':
-                fprintf(stderr, "max-hits not implemented yet.\n");
-                exit(1);
+                if (!parse_i64(optarg, maxhits) || *maxhits < 0 || *maxhits > INT_MAX) {
+                    fprintf(stderr, "invalid max hits value: %s\n", optarg);
+                    exit(1);
+                }
                 break;
             case 'l':
                 list(stdout);

@@ -70,7 +70,8 @@ void *checkSeeds(void *arg) {
         pthread_mutex_unlock(params.mtx);
         if (batch > params.end){ break; }
         // checked every seed so ctrl-c doesn't wait for the batch to finish; relaxed is enough for a flag
-        for (int64_t seed = batch; seed < batch + params.offset && !atomic_load_explicit(params.stop, memory_order_relaxed); seed++) {
+        for (int64_t seed = batch; seed < batch + params.offset &&
+            !atomic_load_explicit(params.stop, memory_order_relaxed); seed++) {
             if (seed > params.end) break;
             int successful[MAX_TERMS]; // indicies of successful groups
             int successfulCount = 0;
@@ -157,11 +158,17 @@ void *checkSeeds(void *arg) {
                 Group group = params.filter.groups[i];
                 if (searchForStructures(&group, 0, exactSpawn, picked, &candidates[i])) { // success!
                     flockfile(stdout); // keep other threads from writing into the middle of this line
-                    printf("HIT %" PRId64 " spawn %d,%d ", seed, spawn.x, spawn.z);
-                    for (int j = 0; j < group.count; j++) {
-                        printf("%s %i,%i ", struct2str(group.terms[j].type), picked[j].x, picked[j].z);
+                    int64_t n = atomic_fetch_add_explicit(params.hits_counter, 1, memory_order_relaxed);
+                    if (n < params.max_hits) { // within bounds
+                        printf("HIT %" PRId64 " spawn %d,%d ", seed, spawn.x, spawn.z);
+                        for (int j = 0; j < group.count; j++) {
+                            printf("%s %i,%i ", struct2str(group.terms[j].type), picked[j].x, picked[j].z);
+                        }
+                        printf("\n");
+                        if (n + 1 == params.max_hits) atomic_store(params.stop, true); // that was the last one
+                    } else { // cancel searches for edge case maxhits = 0
+                        atomic_store(params.stop, true);
                     }
-                    printf("\n");
                     funlockfile(stdout);
                     break; //TODO remove this to print all hits for a seed
                 }

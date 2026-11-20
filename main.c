@@ -9,7 +9,8 @@ int main(int argc, char **argv) {
     int nthreads = cpuCount();
     char* patterns[argc];
     int64_t endseed = INT64_MAX;
-    int64_t seed = parse_args(argc, argv, patterns, &endseed);
+    int64_t maxhits = INT64_MAX;
+    int64_t seed = parse_args(argc, argv, patterns, &endseed, &maxhits);
     initConfigs(MC);
     Filter filter;
     int ngroups = 0;
@@ -37,6 +38,6 @@ int main(int argc, char **argv) {
         }
     }
     filter.count = ngroups;
-    seed_search_threaded(nthreads, seed, endseed, filter);
+    seed_search_threaded(nthreads, seed, endseed, maxhits, filter);
     return 0;
 }

@@ -28,9 +28,10 @@ bool parse_i64(const char *s, int64_t *out) {
 
 // static so the signal handler can reach it
 static atomic_bool stop = false;
+static atomic_int hits = 0;
 static void onInterrupt(int sig) { (void)sig; atomic_store(&stop, true); }
 
-void seed_search_threaded(int nthreads, int64_t startSeed, int64_t stopSeed, Filter filter) {
+void seed_search_threaded(int nthreads, int64_t startSeed, int64_t stopSeed, int64_t maxhits, Filter filter) {
     Generator genOverworld[nthreads];
     Generator genNether[nthreads];
     pthread_t threads[nthreads];
@@ -52,7 +53,7 @@ void seed_search_threaded(int nthreads, int64_t startSeed, int64_t stopSeed, Fil
     for (int t = 0; t < nthreads; t++) {
         setupGenerator(&genOverworld[t], MC, 0);
         setupGenerator(&genNether[t], MC, 0);
-        params[t] = (CheckSeedsParams){&nextBatch, BATCH_SIZE, stopSeed, &genOverworld[t], &genNether[t], filter, &stop, &seedMutex};
+        params[t] = (CheckSeedsParams){&nextBatch, BATCH_SIZE, stopSeed, maxhits,&genOverworld[t], &genNether[t], filter, &stop, &hits, &seedMutex};
         pthread_create(&threads[t], NULL, checkSeeds, &params[t]);
     }
     // threads only return once stop is set; joining keeps the locals above alive until they're done
